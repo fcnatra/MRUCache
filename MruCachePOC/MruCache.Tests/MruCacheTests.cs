@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using FakeItEasy;
 
 namespace MruCache.Tests;
@@ -5,26 +6,44 @@ namespace MruCache.Tests;
 public class MruCacheTests
 {
     [Fact]
-    public void Given_CacheSwapper_ExceedentElementsGoThere()
+    public void GivenCacheSwapper_AddingNewElement_SearchIntoDumpedElements()
+    {
+        var keyName = 1;
+        var fakeCacheSwapper = A.Fake<ICacheSwapper>();
+
+        var cache = new Cache<string>();
+        cache.CacheSwapper = fakeCacheSwapper;
+
+        // ACT
+        cache.AddOrUpdate(keyName, "any value");
+
+        // ASSERT
+        A.CallTo(() => fakeCacheSwapper.Recover(A<Dictionary<object, MruCacheEntry<string>>>._, A<object>.That.IsEqualTo<object>(keyName)))
+        .MustHaveHappened(1, Times.Exactly);
+    }
+
+    [Fact]
+    public void GivenCacheSwapper_ExceedentElements_AreDumpedIntoTheCache()
     {
         var firstKey = 1;
-        var secondKey = 2;
-        var thirdKey = 3;
         var firstValueAdded = "one";
 
         var fakeCacheSwapper = A.Fake<ICacheSwapper>();
+        A.CallTo(() => fakeCacheSwapper.Recover(A<Dictionary<object, MruCacheEntry<string>>>._, A<object>._)).Returns(false);
+
         var cache = new Cache<string>();
         cache.CacheSwapper = fakeCacheSwapper;
 
         cache.MaxActiveEntries = 2;
         cache.AddOrUpdate(firstKey, firstValueAdded);
-        cache.AddOrUpdate(secondKey, "any value");
+        cache.AddOrUpdate(2, "any value");
 
         // ACT
-        cache.AddOrUpdate(thirdKey, "any other value");
+        cache.AddOrUpdate(3, "any other value");
 
         // ASSERT
-        A.CallTo(() => fakeCacheSwapper.Dump(A<Dictionary<object, MruCacheEntry<string>>>._, A<IEnumerable<object>>._))
+        A.CallTo(() => fakeCacheSwapper.Dump(A<Dictionary<object, MruCacheEntry<string>>>._, A<IEnumerable<object>>
+        .That.IsSameSequenceAs<IEnumerable<object>>(new List<object>{firstKey})))
         .MustHaveHappened(1, Times.Exactly);
     }
 
