@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Main", "Main\Main.csproj", "{0F2E3852-FF40-4E19-B696-951E4BACEB37}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MruCache.Tests", "MruCache.Tests\MruCache.Tests.csproj", "{DB1C16B2-374B-435D-921B-10FFF0B0C979}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0F2E3852-FF40-4E19-B696-951E4BACEB37}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0F2E3852-FF40-4E19-B696-951E4BACEB37}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0F2E3852-FF40-4E19-B696-951E4BACEB37}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0F2E3852-FF40-4E19-B696-951E4BACEB37}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DB1C16B2-374B-435D-921B-10FFF0B0C979}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DB1C16B2-374B-435D-921B-10FFF0B0C979}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DB1C16B2-374B-435D-921B-10FFF0B0C979}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DB1C16B2-374B-435D-921B-10FFF0B0C979}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
