@@ -1,7 +1,33 @@
+using FakeItEasy;
+
 namespace MruCache.Tests;
 
 public class MruCacheTests
 {
+    [Fact]
+    public void Given_CacheSwapper_ExceedentElementsGoThere()
+    {
+        var firstKey = 1;
+        var secondKey = 2;
+        var thirdKey = 3;
+        var firstValueAdded = "one";
+
+        var fakeCacheSwapper = A.Fake<ICacheSwapper>();
+        var cache = new Cache<string>();
+        cache.CacheSwapper = fakeCacheSwapper;
+
+        cache.MaxActiveEntries = 2;
+        cache.AddOrUpdate(firstKey, firstValueAdded);
+        cache.AddOrUpdate(secondKey, "any value");
+
+        // ACT
+        cache.AddOrUpdate(thirdKey, "any other value");
+
+        // ASSERT
+        A.CallTo(() => fakeCacheSwapper.Dump(A<Dictionary<object, MruCacheEntry<string>>>._, A<IEnumerable<object>>._))
+        .MustHaveHappened(1, Times.Exactly);
+    }
+
     [Fact]
     public void Given_InexistingKey_NullValueIsReturned()
     {

@@ -6,7 +6,7 @@ public class Cache<T>
     private Dictionary<object, MruCacheEntry<T>> _entries;
     private bool IsFull => _entries.Count >= MaxActiveEntries;
     public uint MaxActiveEntries { get; set; } = 1000000;
-    public ICacheSwapper? CacheSwapper { get; private set; }
+    public ICacheSwapper? CacheSwapper { get; set; }
     
     public Cache()
     {
