@@ -1590,6 +1590,16 @@
         "build": {
           "build/netcoreapp3.1/xunit.runner.visualstudio.props": {}
         }
+      },
+      "MruCache/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v7.0",
+        "compile": {
+          "bin/placeholder/MruCache.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/MruCache.dll": {}
+        }
       }
     }
   },
@@ -4230,11 +4240,17 @@
         "xunit.runner.visualstudio.2.4.5.nupkg.sha512",
         "xunit.runner.visualstudio.nuspec"
       ]
+    },
+    "MruCache/1.0.0": {
+      "type": "project",
+      "path": "../MruCache/MruCache.csproj",
+      "msbuildProject": "../MruCache/MruCache.csproj"
     }
   },
   "projectFileDependencyGroups": {
     "net7.0": [
       "Microsoft.NET.Test.Sdk >= 17.5.0",
+      "MruCache >= 1.0.0",
       "coverlet.collector >= 3.2.0",
       "xunit >= 2.4.2",
       "xunit.runner.visualstudio >= 2.4.5"
@@ -4264,7 +4280,11 @@
       "frameworks": {
         "net7.0": {
           "targetAlias": "net7.0",
-          "projectReferences": {}
+          "projectReferences": {
+            "/workspaces/MRUCache/MruCachePOC/MruCache/MruCache.csproj": {
+              "projectPath": "/workspaces/MRUCache/MruCachePOC/MruCache/MruCache.csproj"
+            }
+          }
         }
       },
       "warningProperties": {

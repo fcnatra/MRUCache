@@ -1,4 +1,4 @@
-﻿namespace Main;
+﻿namespace MruCache.Main;
 
 class Program
 {

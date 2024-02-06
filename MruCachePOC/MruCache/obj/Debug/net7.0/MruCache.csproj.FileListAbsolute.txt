@@ -1,0 +1,12 @@
+/workspaces/MRUCache/MruCachePOC/MruCache/obj/Debug/net7.0/MruCache.csproj.AssemblyReference.cache
+/workspaces/MRUCache/MruCachePOC/MruCache/obj/Debug/net7.0/MruCache.GeneratedMSBuildEditorConfig.editorconfig
+/workspaces/MRUCache/MruCachePOC/MruCache/obj/Debug/net7.0/MruCache.AssemblyInfoInputs.cache
+/workspaces/MRUCache/MruCachePOC/MruCache/obj/Debug/net7.0/MruCache.AssemblyInfo.cs
+/workspaces/MRUCache/MruCachePOC/MruCache/obj/Debug/net7.0/MruCache.csproj.CoreCompileInputs.cache
+/workspaces/MRUCache/MruCachePOC/MruCache/bin/Debug/net7.0/MruCache.deps.json
+/workspaces/MRUCache/MruCachePOC/MruCache/bin/Debug/net7.0/MruCache.dll
+/workspaces/MRUCache/MruCachePOC/MruCache/bin/Debug/net7.0/MruCache.pdb
+/workspaces/MRUCache/MruCachePOC/MruCache/obj/Debug/net7.0/MruCache.dll
+/workspaces/MRUCache/MruCachePOC/MruCache/obj/Debug/net7.0/refint/MruCache.dll
+/workspaces/MRUCache/MruCachePOC/MruCache/obj/Debug/net7.0/MruCache.pdb
+/workspaces/MRUCache/MruCachePOC/MruCache/obj/Debug/net7.0/ref/MruCache.dll
