@@ -7,6 +7,29 @@ namespace MruCache.Tests;
 public class CacheSwapperTests
 {
     [Fact]
+    public void RecoveringEntry_AlreadyRecovered_ReturnsFalse()
+    {
+        ICacheSwapper memorySwapper = new MemoryCacheSwapper();
+
+        var nameOfKey1 = "key1";
+        var value1 = "value1";
+
+        var entries = new Dictionary<object, object>
+        {
+            { nameOfKey1, new MruCacheEntry<string>(value1) },
+            { "second key", new MruCacheEntry<string>("second valueS") },
+        };
+        memorySwapper.Dump(entries, new List<object> {nameOfKey1});
+
+        // ACT
+        memorySwapper.Recover(entries, nameOfKey1);
+        bool recoveredFine = memorySwapper.Recover(entries, nameOfKey1);
+
+        // ASSERT
+        Assert.False(recoveredFine);
+    }
+
+    [Fact]
     public void DumpingKey_ThatIsNotInTheEntryList_ThrowsException()
     {
         ICacheSwapper memorySwapper = new MemoryCacheSwapper();
@@ -49,7 +72,7 @@ public class CacheSwapperTests
     }
 
     [Fact]
-    public void Recovering_NotDumpedValue_ReturnsNull()
+    public void Recovering_NotDumpedValue_ReturnsFalse()
     {
         ICacheSwapper memorySwapper = new MemoryCacheSwapper();
 

@@ -25,7 +25,10 @@ public class MemoryCacheSwapper : ICacheSwapper
         bool wasRecoveredFine = _cachedEntries.TryGetValue(key, out object entry);
 
         if (wasRecoveredFine)
-            entries.Add(key, _cachedEntries[key]);
+        {
+            entries.Add(key,entry);
+            _cachedEntries.Remove(key);
+        }
 
         return wasRecoveredFine;
     }
