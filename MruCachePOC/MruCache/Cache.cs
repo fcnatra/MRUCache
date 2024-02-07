@@ -1,9 +1,11 @@
-﻿namespace MruCache;
+﻿using CacheSwapper;
+
+namespace MruCache;
 
 public class Cache<T>
 {
     private object _lock;
-    private Dictionary<object, MruCacheEntry<T>> _entries;
+    private Dictionary<object, object> _entries;
     private bool IsFull => _entries.Count >= MaxActiveEntries;
     public uint MaxActiveEntries { get; set; } = 1000000;
     public ICacheSwapper? CacheSwapper { get; set; }
@@ -11,7 +13,7 @@ public class Cache<T>
     public Cache()
     {
         this._lock = new object();
-        this._entries = new Dictionary<object, MruCacheEntry<T>>();
+        this._entries = new Dictionary<object, object>();
     }
 
     public T? this[object key]
@@ -29,9 +31,9 @@ public class Cache<T>
 
     public bool TryGetValue(object key, out T? value)
     {
-        if (_entries.TryGetValue(key, out MruCacheEntry<T> entry))
+        if (_entries.TryGetValue(key, out object? entry))
         {
-            value = entry.Value;
+            value = ((MruCacheEntry<T>)entry).Value;
             return true;
         }
         else
@@ -47,7 +49,7 @@ public class Cache<T>
         {
             if (_entries.ContainsKey(key) || CacheSwapper?.Recover(_entries, key) == true)
             {
-                _entries[key].Update(value);
+                ((MruCacheEntry<T>)_entries[key]).Update(value);
             }
             else
             {
@@ -62,7 +64,7 @@ public class Cache<T>
         if (IsFull)
         {
             // get 1% of entries which were Least Recently Used
-            var keysToRemove = _entries.OrderBy(e => e.Value.LastAccessTime).Select(e => e.Key).Take(OnePercent);
+            var keysToRemove = _entries.OrderBy(e => ((MruCacheEntry<T>)e.Value).LastAccessTime).Select(e => e.Key).Take(OnePercent);
 
             if (this.CacheSwapper is not null)
                 CacheSwapper.Dump(_entries, keysToRemove);

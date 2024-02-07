@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MruCache.Tests", "MruCache.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MruCache", "MruCache\MruCache.csproj", "{B7E631EB-38C7-4D91-A543-94168DD92D4D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CacheSwapper", "CacheSwapper\CacheSwapper.csproj", "{437714EB-778E-4C9B-890B-1469839EFAFC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{B7E631EB-38C7-4D91-A543-94168DD92D4D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B7E631EB-38C7-4D91-A543-94168DD92D4D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B7E631EB-38C7-4D91-A543-94168DD92D4D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{437714EB-778E-4C9B-890B-1469839EFAFC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{437714EB-778E-4C9B-890B-1469839EFAFC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{437714EB-778E-4C9B-890B-1469839EFAFC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{437714EB-778E-4C9B-890B-1469839EFAFC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

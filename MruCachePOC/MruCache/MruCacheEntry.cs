@@ -4,7 +4,7 @@ public class MruCacheEntry<T>
 {
     private T? _value;
 
-    public MruCacheEntry(T value)
+    public MruCacheEntry(T? value)
     {
         Value = value;
     }

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using FakeItEasy;
+using CacheSwapper;
 
 namespace MruCache.Tests;
 
@@ -18,7 +19,7 @@ public class MruCacheTests
         cache.AddOrUpdate(keyName, "any value");
 
         // ASSERT
-        A.CallTo(() => fakeCacheSwapper.Recover(A<Dictionary<object, MruCacheEntry<string>>>._, A<object>.That.IsEqualTo<object>(keyName)))
+        A.CallTo(() => fakeCacheSwapper.Recover(A<Dictionary<object, object>>._, A<object>.That.IsEqualTo<object>(keyName)))
         .MustHaveHappened(1, Times.Exactly);
     }
 
@@ -29,7 +30,7 @@ public class MruCacheTests
         var firstValueAdded = "one";
 
         var fakeCacheSwapper = A.Fake<ICacheSwapper>();
-        A.CallTo(() => fakeCacheSwapper.Recover(A<Dictionary<object, MruCacheEntry<string>>>._, A<object>._)).Returns(false);
+        A.CallTo(() => fakeCacheSwapper.Recover(A<Dictionary<object, object>>._, A<object>._)).Returns(false);
 
         var cache = new Cache<string>();
         cache.CacheSwapper = fakeCacheSwapper;
@@ -42,7 +43,7 @@ public class MruCacheTests
         cache.AddOrUpdate(3, "any other value");
 
         // ASSERT
-        A.CallTo(() => fakeCacheSwapper.Dump(A<Dictionary<object, MruCacheEntry<string>>>._, A<IEnumerable<object>>
+        A.CallTo(() => fakeCacheSwapper.Dump(A<Dictionary<object, object>>._, A<IEnumerable<object>>
         .That.IsSameSequenceAs<IEnumerable<object>>(new List<object>{firstKey})))
         .MustHaveHappened(1, Times.Exactly);
     }

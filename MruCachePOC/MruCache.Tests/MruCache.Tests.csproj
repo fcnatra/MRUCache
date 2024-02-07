@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MruCache\MruCache.csproj" />
+    <ProjectReference Include="..\CacheSwapper\CacheSwapper.csproj" />
   </ItemGroup>
 
 </Project>
