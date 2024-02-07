@@ -140,6 +140,7 @@ public class MruCacheTests
     [InlineData(new object[] { new byte[]{1, 2, 3}, new byte[]{4, 5, 6} } )]
     [InlineData(new object[] { 7, 8 } )]
     [InlineData(new object[] { 12.3, 45.6 } )]
+    [InlineData(new object[] { "pruebaNull", null } )]
     public void Given_Object_CanBeRecovered(object keyName, object value)
     {
         var cache = new Cache<object>();
