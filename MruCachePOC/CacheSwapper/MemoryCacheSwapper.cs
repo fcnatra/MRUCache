@@ -26,12 +26,14 @@ public class MemoryCacheSwapper : ICacheSwapper
 
 	public bool Recover(Dictionary<object, object> entries, object key)
 	{
-		bool wasRecoveredFine = _cachedEntries.TryGetValue(key, out object? entry);
+		var cachedEntries = DecompressCache();
+		bool wasRecoveredFine = cachedEntries.TryGetValue(key, out object? entry);
 
 		if (wasRecoveredFine)
 		{
 			entries.Add(key, entry);
-			_cachedEntries.Remove(key);
+			cachedEntries.Remove(key);
+			CompressCache(cachedEntries);
 		}
 
 		return wasRecoveredFine;
@@ -75,9 +77,9 @@ public class MemoryCacheSwapper : ICacheSwapper
 		}
 	}
 
-	private Dictionary<object, object>? DecompressCache()
+	private Dictionary<object, object> DecompressCache()
 	{
-		Dictionary<object, object>? cachedEntries = new Dictionary<object, object>();
+		Dictionary<object, object> cachedEntries = new Dictionary<object, object>();
 
 		if (_compressedCache == null || _compressedCache.Length == 0)
 			return cachedEntries;
@@ -92,7 +94,7 @@ public class MemoryCacheSwapper : ICacheSwapper
 			{
 				string jsonString = reader.ReadToEnd();
 				JsonSerializerOptions deserializationOptions = SetupDeserializationOptions();
-				cachedEntries = (Dictionary<object, object>?)JsonSerializer.Deserialize<object>(jsonString, deserializationOptions);
+				cachedEntries = (Dictionary<object, object>?)JsonSerializer.Deserialize<object>(jsonString, deserializationOptions) ?? [];
 			}
 		}
 
