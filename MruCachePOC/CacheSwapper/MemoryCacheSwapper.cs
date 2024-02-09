@@ -53,7 +53,10 @@ public class MemoryCacheSwapper<T> : ICacheSwapper<T> where T : class
 	private void CompressCache(Dictionary<object, T> cachedEntries)
 	{
 		if (cachedEntries.Count == 0)
+		{
+			_compressedCache = [];
 			return;
+		}
 
 		JsonSerializerOptions serializationOptions = SetupSerializationOptions();
 		var jsonString = JsonSerializer.Serialize(cachedEntries, serializationOptions);
