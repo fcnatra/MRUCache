@@ -11,7 +11,23 @@ public class CacheSwapperTests
 		_memorySwapper = new MemoryCacheSwapper<MruCacheEntry<object>>();
 	}
 
-    [Fact]
+	[Fact]
+	public void TwoMillionEntries_CanBeCached()
+	{
+		var threeMillion = 3000000;
+		var twoMillion = 2000000;
+		var entries = new Dictionary<object, MruCacheEntry<object>>();
+		for (int i = 0; i < threeMillion; i++)
+			entries.Add(i, new MruCacheEntry<object>(i.ToString()));
+
+		// ACT
+		var dumpedKeys = _memorySwapper.Dump(entries, entries.Keys.Take(twoMillion));
+
+		// ASSERT
+		Assert.Equal(twoMillion, dumpedKeys.Count());
+	}
+
+	[Fact]
 	public void RecoveringEntry_AlreadyRecovered_ReturnsFalse()
 	{
 		var nameOfKey1 = "key1";

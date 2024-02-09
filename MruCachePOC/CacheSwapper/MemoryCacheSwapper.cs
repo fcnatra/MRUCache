@@ -9,16 +9,14 @@ public class MemoryCacheSwapper<T> : ICacheSwapper<T> where T : class
 
 	public IEnumerable<object> Dump(Dictionary<object, T> entries, IEnumerable<object> keysToDump)
 	{
-		var addedKeys = new List<object>();
+		var cachedEntries = DecompressCache();
 
-		foreach (var k in keysToDump)
-		{
-			if (TryAdd(k, entries[k]))
-			{
-				addedKeys.Add(k);
-				entries.Remove(k);
-			}
-		}
+		var addedKeys = keysToDump.Where(k => cachedEntries.TryAdd(k, entries[k])).ToList();
+
+		foreach (var key in addedKeys) entries.Remove(key);
+
+		if (addedKeys.Any())
+			CompressCache(cachedEntries);
 
 		return addedKeys;
 	}
@@ -36,18 +34,6 @@ public class MemoryCacheSwapper<T> : ICacheSwapper<T> where T : class
 		}
 
 		return wasRecoveredFine;
-	}
-
-	private bool TryAdd(object key, T value)
-	{
-		var entries = DecompressCache();
-
-		var addedOk = entries.TryAdd(key, value);
-
-		if (addedOk)
-			CompressCache(entries);
-
-		return addedOk;
 	}
 
 	private void CompressCache(Dictionary<object, T> cachedEntries)
