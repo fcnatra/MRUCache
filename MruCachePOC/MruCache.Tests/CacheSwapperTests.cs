@@ -86,14 +86,14 @@ public class CacheSwapperTests
 	[Fact]
 	public void GivenDumpedEntry_RecoveringIt_AddsTheDumpedValueToTheEntryList()
 	{
-		ICacheSwapper<MruCacheEntry<object>> memorySwapper = new MemoryCacheSwapper<MruCacheEntry<object>>();
+		ICacheSwapper<MruCacheEntry<string>> memorySwapper = new MemoryCacheSwapper<MruCacheEntry<string>>();
 
 		var nameOfKey1 = "key1";
 		var value1 = "value1";
 
-		var entries = new Dictionary<object, MruCacheEntry<object>>
+		var entries = new Dictionary<object, MruCacheEntry<string>>
 		{
-			{ nameOfKey1, new MruCacheEntry<object>(value1) }
+			{ nameOfKey1, new MruCacheEntry<string>(value1) }
 		};
 		memorySwapper.Dump(entries, new List<object> { nameOfKey1 });
 
@@ -101,8 +101,8 @@ public class CacheSwapperTests
 		memorySwapper.Recover(entries, nameOfKey1);
 
 		// ASSERT
-		bool entryIsInTheList = entries.TryGetValue(nameOfKey1, out MruCacheEntry<object>? entry);
-		Assert.Equal(value1, ((MruCacheEntry<object>)entry).Value);
+		MruCacheEntry<string> entry = entries[nameOfKey1];
+		Assert.Equal(value1, entry.Value);
 	}
 
 	[Fact]

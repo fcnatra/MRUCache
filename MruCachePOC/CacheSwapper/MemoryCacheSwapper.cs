@@ -93,7 +93,7 @@ public class MemoryCacheSwapper<T> : ICacheSwapper<T> where T : class
 			{
 				string jsonString = reader.ReadToEnd();
 				JsonSerializerOptions deserializationOptions = SetupDeserializationOptions();
-				var deserializedObject = JsonSerializer.Deserialize<object>(jsonString, deserializationOptions);
+				var deserializedObject = JsonSerializer.Deserialize<Dictionary<object, T>>(jsonString, deserializationOptions);
 				cachedEntries = (Dictionary<object, T>?)deserializedObject ?? [];
 			}
 		}

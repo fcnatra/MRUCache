@@ -56,9 +56,9 @@ internal class ByteArrayJsonConverter : JsonConverter<byte[]>
 	}
 }
 
-internal class CacheDeserializerJsonConverter<T> : JsonConverter<object> where T: class
+internal class CacheDeserializerJsonConverter<T> : JsonConverter<Dictionary<object, T>> where T: class
 {
-	public override object Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+	public override Dictionary<object, T> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
 	{
 		if (reader.TokenType != JsonTokenType.StartObject)
 			throw new JsonException($"Unexpected token type: {reader.TokenType}");
@@ -110,8 +110,10 @@ internal class CacheDeserializerJsonConverter<T> : JsonConverter<object> where T
 					break;
 
 				case JsonTokenType.StartObject:
-					//propertyValue = Read(ref reader, typeof(object), options); // Recursive call for nested objects
 					propertyValue = JsonSerializer.Deserialize(ref reader, typeof(T));
+					foreach (var property in typeof(T).GetProperties())
+						if (property.GetValue(propertyValue) is JsonElement)
+							property.SetValue(propertyValue, ((JsonElement)property.GetValue(propertyValue)).GetString());
 					break;
 
 				default:
@@ -125,7 +127,7 @@ internal class CacheDeserializerJsonConverter<T> : JsonConverter<object> where T
 		return dictionary;
 	}
 
-	public override void Write(Utf8JsonWriter writer, object value, JsonSerializerOptions options)
+	public override void Write(Utf8JsonWriter writer, Dictionary<object, T> value, JsonSerializerOptions options)
 	{
 		throw new NotImplementedException();
 	}
