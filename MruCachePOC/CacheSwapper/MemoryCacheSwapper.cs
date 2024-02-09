@@ -3,12 +3,11 @@ using System.Text.Json;
 
 namespace CacheSwapper;
 
-public class MemoryCacheSwapper : ICacheSwapper
+public class MemoryCacheSwapper<T> : ICacheSwapper<T> where T : class
 {
-	private Dictionary<object, object> _cachedEntries = new Dictionary<object, object>();
 	private byte[] _compressedCache = [];
 
-	public IEnumerable<object> Dump(Dictionary<object, object> entries, IEnumerable<object> keysToDump)
+	public IEnumerable<object> Dump(Dictionary<object, T> entries, IEnumerable<object> keysToDump)
 	{
 		var addedKeys = new List<object>();
 
@@ -24,14 +23,14 @@ public class MemoryCacheSwapper : ICacheSwapper
 		return addedKeys;
 	}
 
-	public bool Recover(Dictionary<object, object> entries, object key)
+	public bool Recover(Dictionary<object, T> entries, object key)
 	{
 		var cachedEntries = DecompressCache();
-		bool wasRecoveredFine = cachedEntries.TryGetValue(key, out object? entry);
+		bool wasRecoveredFine = cachedEntries.TryGetValue(key, out T? entry);
 
 		if (wasRecoveredFine)
 		{
-			entries.Add(key, entry);
+			entries.Add(key, (T)entry);
 			cachedEntries.Remove(key);
 			CompressCache(cachedEntries);
 		}
@@ -39,7 +38,7 @@ public class MemoryCacheSwapper : ICacheSwapper
 		return wasRecoveredFine;
 	}
 
-	private bool TryAdd(object key, object value)
+	private bool TryAdd(object key, T value)
 	{
 		var entries = DecompressCache();
 
@@ -51,7 +50,7 @@ public class MemoryCacheSwapper : ICacheSwapper
 		return addedOk;
 	}
 
-	private void CompressCache(Dictionary<object, object> cachedEntries)
+	private void CompressCache(Dictionary<object, T> cachedEntries)
 	{
 		if (cachedEntries.Count == 0)
 			return;
@@ -77,9 +76,9 @@ public class MemoryCacheSwapper : ICacheSwapper
 		}
 	}
 
-	private Dictionary<object, object> DecompressCache()
+	private Dictionary<object, T> DecompressCache()
 	{
-		Dictionary<object, object> cachedEntries = new Dictionary<object, object>();
+		Dictionary<object, T> cachedEntries = [];
 
 		if (_compressedCache == null || _compressedCache.Length == 0)
 			return cachedEntries;
@@ -94,7 +93,8 @@ public class MemoryCacheSwapper : ICacheSwapper
 			{
 				string jsonString = reader.ReadToEnd();
 				JsonSerializerOptions deserializationOptions = SetupDeserializationOptions();
-				cachedEntries = (Dictionary<object, object>?)JsonSerializer.Deserialize<object>(jsonString, deserializationOptions) ?? [];
+				var deserializedObject = JsonSerializer.Deserialize<object>(jsonString, deserializationOptions);
+				cachedEntries = (Dictionary<object, T>?)deserializedObject ?? [];
 			}
 		}
 
@@ -105,7 +105,7 @@ public class MemoryCacheSwapper : ICacheSwapper
 	{
 		// needed to avoid getting JsonElement.JsonValueKind values instead of actual values
 		var deserializationOptions = new JsonSerializerOptions();
-		deserializationOptions.Converters.Add(new CacheDeserializerJsonConverter());
+		deserializationOptions.Converters.Add(new CacheDeserializerJsonConverter<T>());
 		return deserializationOptions;
 	}
 

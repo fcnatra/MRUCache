@@ -26,11 +26,6 @@ public class MruCacheEntry<T>
 
     public DateTime LastAccessTime { get; set; }
 
-    public void Update(T? value)
-    {
-        Value = value;
-    }
-
     private void Touch()
     {
         LastAccessTime = DateTime.Now;

@@ -5,15 +5,15 @@ namespace MruCache;
 public class Cache<T>
 {
     private object _lock;
-    private Dictionary<object, object> _entries;
+    private Dictionary<object, MruCacheEntry<T>> _entries;
     private bool IsFull => _entries.Count >= MaxActiveEntries;
     public uint MaxActiveEntries { get; set; } = 1000000;
-    public ICacheSwapper? CacheSwapper { get; set; }
+    public ICacheSwapper<MruCacheEntry<T>>? CacheSwapper { get; set; }
     
     public Cache()
     {
         this._lock = new object();
-        this._entries = new Dictionary<object, object>();
+        this._entries = new Dictionary<object, MruCacheEntry<T>>();
     }
 
     public T? this[object key]
@@ -31,7 +31,7 @@ public class Cache<T>
 
     public bool TryGetValue(object key, out T? value)
     {
-        if (_entries.TryGetValue(key, out object? entry))
+        if (_entries.TryGetValue(key, out MruCacheEntry<T>? entry))
         {
             value = ((MruCacheEntry<T>)entry).Value;
             return true;
@@ -49,7 +49,7 @@ public class Cache<T>
         {
             if (_entries.ContainsKey(key) || CacheSwapper?.Recover(_entries, key) == true)
             {
-                ((MruCacheEntry<T>)_entries[key]).Update(value);
+                ((MruCacheEntry<T>)_entries[key]).Value = value;
             }
             else
             {
