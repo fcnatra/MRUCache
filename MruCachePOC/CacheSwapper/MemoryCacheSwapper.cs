@@ -36,16 +36,16 @@ public class MemoryCacheSwapper<T> : ICacheSwapper<T> where T : class
 		return wasRecoveredFine;
 	}
 
-	private void CompressCache(Dictionary<object, T> cachedEntries)
+	private void CompressCache(Dictionary<object, T> entries)
 	{
-		if (cachedEntries.Count == 0)
+		if (entries.Count == 0)
 		{
 			_compressedCache = [];
 			return;
 		}
 
 		JsonSerializerOptions serializationOptions = SetupSerializationOptions();
-		var jsonString = JsonSerializer.Serialize(cachedEntries, serializationOptions);
+		var jsonString = JsonSerializer.Serialize(entries, serializationOptions);
 
 		using (MemoryStream memStream = new MemoryStream())
 		{

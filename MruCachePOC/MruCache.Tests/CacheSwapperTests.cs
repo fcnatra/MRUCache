@@ -9,36 +9,24 @@ public class CacheSwapperTests
 	public CacheSwapperTests()
     {
 		_memorySwapper = new MemoryCacheSwapper<MruCacheEntry<object>>();
+		//_memorySwapper = new SqLiteCacheSwapper<MruCacheEntry<object>>();
 	}
 
-	[Fact]
-	public void TenMillionEntries_CanBeCached()
+	[Theory]
+	[InlineData([15 * 1000000] )]
+	[InlineData([10 * 1000000] )]
+	[InlineData([ 2 * 1000000] )]
+	public void SeveralMillionEntries_CanBeCached(int numberOfEntries)
 	{
-		var _10_Million = 10 * 1000000;
 		var entries = new Dictionary<object, MruCacheEntry<object>>();
-		for (int i = 0; i < _10_Million; i++)
+		for (int i = 0; i < numberOfEntries; i++)
 			entries.Add(i, new MruCacheEntry<object>(i));
 
 		// ACT
 		var dumpedKeys = _memorySwapper.Dump(entries, entries.Keys);
 
 		// ASSERT
-		Assert.Equal(_10_Million, dumpedKeys.Count());
-	}
-
-	[Fact]
-	public void TwoMillionEntries_CanBeCached()
-	{
-		var twoMillion = 2000000;
-		var entries = new Dictionary<object, MruCacheEntry<object>>();
-		for (int i = 0; i < twoMillion; i++)
-			entries.Add(i, new MruCacheEntry<object>(i.ToString()));
-
-		// ACT
-		var dumpedKeys = _memorySwapper.Dump(entries, entries.Keys);
-
-		// ASSERT
-		Assert.Equal(twoMillion, dumpedKeys.Count());
+		Assert.Equal(numberOfEntries, dumpedKeys.Count());
 	}
 
 	[Fact]
