@@ -66,68 +66,76 @@ internal class CacheDeserializerJsonConverter<T> : JsonConverter<Dictionary<obje
 		var dictionary = new Dictionary<object, T>();
 
 		while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
-		{
-			if (reader.TokenType != JsonTokenType.PropertyName)
-				throw new JsonException($"Unexpected token type: {reader.TokenType}");
+        {
+            if (reader.TokenType != JsonTokenType.PropertyName)
+                throw new JsonException($"Unexpected token type: {reader.TokenType}");
 
-			var propertyName = reader.GetString();
+            string? propertyName = reader.GetString() ?? throw new JsonException("Property name can't be NULL");
+            reader.Read();
 
-			reader.Read();
+            object? propertyValue = null;
+            switch (reader.TokenType)
+            {
+                case JsonTokenType.String:
+                    propertyValue = reader.GetString();
+                    break;
 
-			object? propertyValue = null;
-			switch (reader.TokenType)
-			{
-				case JsonTokenType.String:
-					propertyValue = reader.GetString();
-					break;
+                case JsonTokenType.Number:
+                    if (reader.TryGetByte(out byte b))
+                        propertyValue = b;
+                    else if (reader.TryGetInt32(out var valInt))
+                        propertyValue = valInt;
+                    else if (reader.TryGetInt64(out var valLong))
+                        propertyValue = valLong;
+                    else if (reader.TryGetDouble(out var valDouble))
+                        propertyValue = valDouble;
+                    break;
 
-				case JsonTokenType.Number:
-					if (reader.TryGetByte(out byte b))
-						propertyValue = b;
-					else if (reader.TryGetInt32(out var valInt))
-						propertyValue = valInt;
-					else if (reader.TryGetInt64(out var valLong))
-						propertyValue = valLong;
-					else if (reader.TryGetDouble(out var valDouble))
-						propertyValue = valDouble;
-					break;
+                case JsonTokenType.True:
+                    propertyValue = true;
+                    break;
 
-				case JsonTokenType.True:
-					propertyValue = true;
-					break;
+                case JsonTokenType.False:
+                    propertyValue = false;
+                    break;
 
-				case JsonTokenType.False:
-					propertyValue = false;
-					break;
+                case JsonTokenType.StartArray:
+                    var list = new List<object>();
+                    while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
+                    {
+                        list.Add(Read(ref reader, typeof(object), options));
+                    }
+                    propertyValue = list.ToArray();
+                    break;
 
-				case JsonTokenType.StartArray:
-					var list = new List<object>();
-					while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
-					{
-						list.Add(Read(ref reader, typeof(object), options));
-					}
-					propertyValue = list.ToArray();
-					break;
+                case JsonTokenType.StartObject:
+                    propertyValue = JsonSerializer.Deserialize(ref reader, typeof(T));
+                    foreach (var property in typeof(T).GetProperties())
+                    {
+                        var objectValue = property.GetValue(propertyValue);
+                        if (objectValue is JsonElement)
+                            property.SetValue(propertyValue, ((JsonElement)objectValue).GetString());
+                    }
+                    break;
 
-				case JsonTokenType.StartObject:
-					propertyValue = JsonSerializer.Deserialize(ref reader, typeof(T));
-					foreach (var property in typeof(T).GetProperties())
-						if (property.GetValue(propertyValue) is JsonElement)
-							property.SetValue(propertyValue, ((JsonElement)property.GetValue(propertyValue)).GetString());
-					break;
+                default:
+                    throw new JsonException($"Unexpected token type: {reader.TokenType}");
+            }
 
-				default:
-					throw new JsonException($"Unexpected token type: {reader.TokenType}");
-			}
+            AddValueToTheDictionary(dictionary, propertyName, propertyValue);
+        }
 
-			// Add the property to the dictionary
-			dictionary.Add(propertyName, (T?)propertyValue);
-		}
-
-		return dictionary;
+        return dictionary;
 	}
 
-	public override void Write(Utf8JsonWriter writer, Dictionary<object, T> value, JsonSerializerOptions options)
+    private static void AddValueToTheDictionary(Dictionary<object, T> dictionary, string propertyName, object? propertyValue)
+    {
+		#pragma warning disable 8604 //Possible null reference for parameter "value" in "void Dictionary<object, T>.Add(object key, T value)
+        dictionary.Add(propertyName, (T?)propertyValue);
+		#pragma warning restore 8604
+    }
+
+    public override void Write(Utf8JsonWriter writer, Dictionary<object, T> value, JsonSerializerOptions options)
 	{
 		throw new NotImplementedException();
 	}
@@ -135,7 +143,7 @@ internal class CacheDeserializerJsonConverter<T> : JsonConverter<Dictionary<obje
 
 internal class ObjectDeserializerJsonConverter : JsonConverter<object>
 {
-	public override object Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+	public override object? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
 	{
 		var type = reader.TokenType;
 

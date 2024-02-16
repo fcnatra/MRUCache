@@ -21,14 +21,14 @@ public class MemoryCacheSwapper<T> : ICacheSwapper<T> where T : class
 		return addedKeys;
 	}
 
-	public bool Recover(Dictionary<object, T> entries, object key)
+	public bool Recover(Dictionary<object, T?> entries, object key)
 	{
 		var cachedEntries = DecompressCache();
 		bool wasRecoveredFine = cachedEntries.TryGetValue(key, out T? entry);
 
 		if (wasRecoveredFine)
 		{
-			entries.Add(key, (T)entry);
+			entries.Add(key, (T?)entry);
 			cachedEntries.Remove(key);
 			CompressCache(cachedEntries);
 		}
