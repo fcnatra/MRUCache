@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using FakeItEasy;
 using CacheSwapper;
 
