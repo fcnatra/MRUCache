@@ -4,18 +4,20 @@ namespace MruCache.Tests;
 
 public class CacheSwapperTests
 {
-	ICacheSwapper<MruCacheEntry<object>> _memorySwapper;
+	ICacheSwapper<MruCacheEntry<object>> cacheSwapper;
 
 	public CacheSwapperTests()
-    {
-		_memorySwapper = new MemoryCacheSwapper<MruCacheEntry<object>>();
-		//_memorySwapper = new SqLiteCacheSwapper<MruCacheEntry<object>>();
+	{
+		//cacheSwapper = new MemoryCacheSwapper<MruCacheEntry<object>>();
+
+		var tempPath = Path.GetTempPath();
+		cacheSwapper = new SqLiteCacheSwapper<MruCacheEntry<object>>(tempPath, new FileManager());
 	}
 
 	[Theory]
 	[InlineData([15 * 1000000], Skip = ("Doesn't pass"))]
-	[InlineData([10 * 1000000] )]
-	[InlineData([ 2 * 1000000] )]
+	[InlineData([10 * 1000000])]
+	[InlineData([2 * 1000000])]
 	public void SeveralMillionEntries_CanBeCached(int numberOfEntries)
 	{
 		var entries = new Dictionary<object, MruCacheEntry<object>>();
@@ -23,7 +25,7 @@ public class CacheSwapperTests
 			entries.Add(i, new MruCacheEntry<object>(i));
 
 		// ACT
-		var dumpedKeys = _memorySwapper.Dump(entries, entries.Keys);
+		var dumpedKeys = cacheSwapper.Dump(entries, entries.Keys);
 
 		// ASSERT
 		Assert.Equal(numberOfEntries, dumpedKeys.Count());
@@ -40,11 +42,11 @@ public class CacheSwapperTests
 			{ nameOfKey1, new MruCacheEntry<object>(value1) },
 			{ "second key", new MruCacheEntry<object>("second valueS") },
 		};
-		_memorySwapper.Dump(entries, new List<object> { nameOfKey1 });
+		cacheSwapper.Dump(entries, new List<object> { nameOfKey1 });
 
 		// ACT
-		_memorySwapper.Recover(entries, nameOfKey1);
-		bool recoveredFine = _memorySwapper.Recover(entries, nameOfKey1);
+		cacheSwapper.Recover(entries, nameOfKey1);
+		bool recoveredFine = cacheSwapper.Recover(entries, nameOfKey1);
 
 		// ASSERT
 		Assert.False(recoveredFine);
@@ -62,10 +64,10 @@ public class CacheSwapperTests
 		};
 
 		// ACT
-		_memorySwapper.Dump(entries, new List<object> { nameOfKey1 });
+		cacheSwapper.Dump(entries, new List<object> { nameOfKey1 });
 
 		// ASSERT
-		Assert.Throws<KeyNotFoundException>(() => _memorySwapper.Dump(entries, new List<object> { nameOfKey1 }));
+		Assert.Throws<KeyNotFoundException>(() => cacheSwapper.Dump(entries, new List<object> { nameOfKey1 }));
 	}
 
 	[Fact]
@@ -77,12 +79,12 @@ public class CacheSwapperTests
 		var entries = new Dictionary<object, MruCacheEntry<object>>();
 
 		entries.Add(nameOfKey1, new MruCacheEntry<object>(value1));
-		_memorySwapper.Dump(entries, new List<object> { nameOfKey1 });
+		cacheSwapper.Dump(entries, new List<object> { nameOfKey1 });
 
 		entries.Add(nameOfKey1, new MruCacheEntry<object>(value1));
 
 		// ACT
-		var dumpedKeys = _memorySwapper.Dump(entries, new List<object> { nameOfKey1 });
+		var dumpedKeys = cacheSwapper.Dump(entries, new List<object> { nameOfKey1 });
 
 		// ASSERT
 		Assert.DoesNotContain(nameOfKey1, dumpedKeys);
@@ -94,7 +96,7 @@ public class CacheSwapperTests
 		var entries = new Dictionary<object, MruCacheEntry<object>>();
 
 		// ACT
-		bool wasRecoveredFine = _memorySwapper.Recover(entries, "any keyname not previously dumped");
+		bool wasRecoveredFine = cacheSwapper.Recover(entries, "any keyname not previously dumped");
 
 		// ASSERT
 		Assert.False(wasRecoveredFine);
@@ -110,10 +112,10 @@ public class CacheSwapperTests
 		{
 			{ nameOfKey1, new MruCacheEntry<object>(value1) }
 		};
-		_memorySwapper.Dump(entries, new List<object> { nameOfKey1 });
+		cacheSwapper.Dump(entries, new List<object> { nameOfKey1 });
 
 		// ACT
-		_memorySwapper.Recover(entries, nameOfKey1);
+		cacheSwapper.Recover(entries, nameOfKey1);
 
 		// ASSERT
 		MruCacheEntry<object> entry = entries[nameOfKey1];
@@ -129,10 +131,10 @@ public class CacheSwapperTests
 		{
 			{ nameOfKey1, new MruCacheEntry<object>("value1") }
 		};
-		_memorySwapper.Dump(entries, new List<object> { nameOfKey1 });
+		cacheSwapper.Dump(entries, new List<object> { nameOfKey1 });
 
 		// ACT
-		var wasRecovered = _memorySwapper.Recover(entries, nameOfKey1);
+		var wasRecovered = cacheSwapper.Recover(entries, nameOfKey1);
 
 		// ASSERT
 		Assert.True(wasRecovered);
@@ -151,7 +153,7 @@ public class CacheSwapperTests
 		};
 
 		// ACT
-		_memorySwapper.Dump(entries, entries.Keys.Take(2));
+		cacheSwapper.Dump(entries, entries.Keys.Take(2));
 
 		// ASSERT
 		bool entryIsInTheList = entries.TryGetValue(nameOfKey3, out MruCacheEntry<object>? entry);
@@ -170,7 +172,7 @@ public class CacheSwapperTests
 		entries.Add(nameOfKey2, new MruCacheEntry<object>("value2"));
 
 		// ACT
-		_memorySwapper.Dump(entries, new List<object> { nameOfKey2 });
+		cacheSwapper.Dump(entries, new List<object> { nameOfKey2 });
 
 		// ASSERT
 		bool entryIsInTheList = entries.TryGetValue(nameOfKey2, out MruCacheEntry<object>? entry);
@@ -178,4 +180,6 @@ public class CacheSwapperTests
 		Assert.Single(entries);
 		Assert.False(entryIsInTheList);
 	}
+
+
 }

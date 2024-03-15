@@ -1,4 +1,5 @@
-﻿using System.IO.Compression;
+﻿using CacheSwapper.Serializers;
+using System.IO.Compression;
 using System.Text.Json;
 
 namespace CacheSwapper;
@@ -11,7 +12,7 @@ public class MemoryCacheSwapper<T> : ICacheSwapper<T> where T : class
 	{
 		var cachedEntries = DecompressCache();
 
-		var addedKeys = keysToDump.Where(k => cachedEntries.TryAdd(k, entries[k])).ToList();
+		List<object> addedKeys = keysToDump.Where(k => cachedEntries.TryAdd(k, entries[k])).ToList();
 
 		foreach (var key in addedKeys) entries.Remove(key);
 
@@ -44,7 +45,7 @@ public class MemoryCacheSwapper<T> : ICacheSwapper<T> where T : class
 			return;
 		}
 
-		JsonSerializerOptions serializationOptions = SetupSerializationOptions();
+		JsonSerializerOptions serializationOptions = CacheSerialization.GetOptionsWith(new ByteArrayJsonConverter());
 		var jsonString = JsonSerializer.Serialize(entries, serializationOptions);
 
 		using (MemoryStream memStream = new MemoryStream())
@@ -72,6 +73,9 @@ public class MemoryCacheSwapper<T> : ICacheSwapper<T> where T : class
 		if (_compressedCache == null || _compressedCache.Length == 0)
 			return cachedEntries;
 
+		JsonSerializerOptions deserializationOptions = CacheSerialization.GetOptionsWith(new CacheDeserializerJsonConverter<T>());
+
+
 		using (var compressedStream = new MemoryStream(_compressedCache))
 		using (var gzipStream = new GZipStream(compressedStream, CompressionMode.Decompress))
 		using (var decompressedStream = new MemoryStream())
@@ -81,28 +85,11 @@ public class MemoryCacheSwapper<T> : ICacheSwapper<T> where T : class
 			using (var reader = new StreamReader(decompressedStream))
 			{
 				string jsonString = reader.ReadToEnd();
-				JsonSerializerOptions deserializationOptions = SetupDeserializationOptions();
 				var deserializedObject = JsonSerializer.Deserialize<Dictionary<object, T>>(jsonString, deserializationOptions);
-				cachedEntries = (Dictionary<object, T>?)deserializedObject ?? [];
+				cachedEntries = deserializedObject ?? [];
 			}
 		}
 
 		return cachedEntries;
-	}
-
-	private static JsonSerializerOptions SetupDeserializationOptions()
-	{
-		// needed to avoid getting JsonElement.JsonValueKind values instead of actual values
-		var deserializationOptions = new JsonSerializerOptions();
-		deserializationOptions.Converters.Add(new CacheDeserializerJsonConverter<T>());
-		return deserializationOptions;
-	}
-
-	private static JsonSerializerOptions SetupSerializationOptions()
-	{
-		// needed to avoid getting JsonElement.JsonValueKind values instead of actual values
-		var serializationOptions = new JsonSerializerOptions();
-		serializationOptions.Converters.Add(new ByteArrayJsonConverter());
-		return serializationOptions;
 	}
 }

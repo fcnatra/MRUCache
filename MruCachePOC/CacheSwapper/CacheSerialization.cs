@@ -1,7 +1,17 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace CacheSwapper;
+namespace CacheSwapper.Serializers;
+
+internal static class CacheSerialization
+{
+	internal static JsonSerializerOptions GetOptionsWith(JsonConverter converter)
+	{
+		var deserializationOptions = new JsonSerializerOptions();
+		deserializationOptions.Converters.Add(converter);
+		return deserializationOptions;
+	}
+}
 
 internal static class ArraySerializer
 {
