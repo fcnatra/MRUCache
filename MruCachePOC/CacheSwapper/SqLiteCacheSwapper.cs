@@ -29,6 +29,9 @@ public class SqLiteCacheSwapper<T> : ICacheSwapper<T> where T : class
 
 	public IEnumerable<object> Dump(Dictionary<object, T> entries, IEnumerable<object> keysToDump)
 	{
+		if (keysToDump.Any(k => !entries.ContainsKey(k)))
+			throw new KeyNotFoundException("One or more keys are not in the entry list");
+
 		List<object> keysToReallyDump = GetNonExistingKeys(keysToDump);
 
 		AddKeysToDatabase(entries, keysToReallyDump);

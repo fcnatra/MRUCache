@@ -63,10 +63,9 @@ public class CacheSwapperTests
 			{ nameOfKey1, new MruCacheEntry<object>(value1) }
 		};
 
-		// ACT
-		cacheSwapper.Dump(entries, new List<object> { nameOfKey1 });
+		cacheSwapper.Dump(entries, new List<object> { nameOfKey1 }); // this removes nameOfKey1 from entries
 
-		// ASSERT
+		// ACT && ASSERT
 		Assert.Throws<KeyNotFoundException>(() => cacheSwapper.Dump(entries, new List<object> { nameOfKey1 }));
 	}
 
