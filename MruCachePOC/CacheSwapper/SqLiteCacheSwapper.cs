@@ -169,14 +169,21 @@ public class SqLiteCacheSwapper<T> : ICacheSwapper<T> where T : class
 		{
 			db.Open();
 
-			var createTableCommand = new StringBuilder("CREATE TABLE IF NOT EXISTS ")
+			var commandText = new StringBuilder("DROP TABLE IF EXISTS ")
+				.Append(TABLENAME).Append(';');
+
+			SqliteCommand command = new SqliteCommand(commandText.ToString(), db);
+			command.ExecuteReader();
+
+
+			commandText = new StringBuilder("CREATE TABLE ")
 				.Append(TABLENAME).Append(" (")
 				.Append(FIELDKEY).Append(" TEXT NOT NULL, ")
 				.Append(FIELDVALUE).Append(" TEXT NULL)");
 
-			SqliteCommand createTable = new SqliteCommand(createTableCommand.ToString(), db);
+			command = new SqliteCommand(commandText.ToString(), db);
 
-			createTable.ExecuteReader();
+			command.ExecuteReader();
 		}
 	}
 
