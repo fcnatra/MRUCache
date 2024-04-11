@@ -12,24 +12,24 @@ public class MemoryCacheSwapper<T> : ICacheSwapper<T> where T : class
 	{
 		var cachedEntries = DecompressCache();
 
-		List<object> addedKeys = keysToDump.Where(k => cachedEntries.TryAdd(k, entries[k])).ToList();
+		List<object> keysToAdd = keysToDump.Where(k => cachedEntries.TryAdd(k, entries[k])).ToList();
 
-		foreach (var key in addedKeys) entries.Remove(key);
+		foreach (var key in keysToAdd) entries.Remove(key);
 
-		if (addedKeys.Any())
+		if (keysToAdd.Any())
 			CompressCache(cachedEntries);
 
-		return addedKeys;
+		return keysToAdd;
 	}
 
-	public bool Recover(Dictionary<object, T?> entries, object key)
+	public bool Recover(Dictionary<object, T> entries, object key)
 	{
 		var cachedEntries = DecompressCache();
 		bool wasRecoveredFine = cachedEntries.TryGetValue(key, out T? entry);
 
-		if (wasRecoveredFine)
+		if (wasRecoveredFine && entry is not null)
 		{
-			entries.Add(key, (T?)entry);
+			entries.Add(key, entry);
 			cachedEntries.Remove(key);
 			CompressCache(cachedEntries);
 		}

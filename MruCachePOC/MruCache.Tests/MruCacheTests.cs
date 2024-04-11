@@ -9,7 +9,7 @@ public class MruCacheTests
     public void GivenCacheSwapper_AddingNewElement_SearchIntoDumpedElements()
     {
         var keyName = 1;
-        var fakeCacheSwapper = A.Fake<ICacheSwapper<MruCacheEntry<string>>>();
+        var fakeCacheSwapper = A.Fake<ICacheSwapper<MruCacheEntry<string?>>>();
 
         var cache = new Cache<string>();
         cache.CacheSwapper = fakeCacheSwapper;
@@ -18,7 +18,7 @@ public class MruCacheTests
         cache.AddOrUpdate(keyName, "any value");
 
         // ASSERT
-        A.CallTo(() => fakeCacheSwapper.Recover(A<Dictionary<object, MruCacheEntry<string>>>._, A<int>.That.IsEqualTo<int>(keyName)))
+        A.CallTo(() => fakeCacheSwapper.Recover(A<Dictionary<object, MruCacheEntry<string?>>>._, A<int>.That.IsEqualTo<int>(keyName)))
         .MustHaveHappened(1, Times.Exactly);
     }
 
@@ -28,8 +28,8 @@ public class MruCacheTests
         var firstKey = 1;
         var firstValueAdded = "one";
 
-        var fakeCacheSwapper = A.Fake<ICacheSwapper<MruCacheEntry<string>>>();
-        A.CallTo(() => fakeCacheSwapper.Recover(A<Dictionary<object, MruCacheEntry<string>>>._, A<object>._)).Returns(false);
+        var fakeCacheSwapper = A.Fake<ICacheSwapper<MruCacheEntry<string?>>>();
+        A.CallTo(() => fakeCacheSwapper.Recover(A<Dictionary<object, MruCacheEntry<string?>>>._, A<object>._)).Returns(false);
 
         var cache = new Cache<string>();
         cache.CacheSwapper = fakeCacheSwapper;
@@ -42,7 +42,7 @@ public class MruCacheTests
         cache.AddOrUpdate(3, "any other value");
 
         // ASSERT
-        A.CallTo(() => fakeCacheSwapper.Dump(A<Dictionary<object, MruCacheEntry<string>>>._, A<IEnumerable<object>>
+        A.CallTo(() => fakeCacheSwapper.Dump(A<Dictionary<object, MruCacheEntry<string?>>>._, A<IEnumerable<object>>
         .That.IsSameSequenceAs<IEnumerable<object>>(new List<object>{firstKey})))
         .MustHaveHappened(1, Times.Exactly);
     }
@@ -139,7 +139,7 @@ public class MruCacheTests
     [InlineData(new object[] { new byte[]{1, 2, 3}, new byte[]{4, 5, 6} } )]
     [InlineData(new object[] { 7, 8 } )]
     [InlineData(new object[] { 12.3, 45.6 } )]
-    [InlineData(new object[] { "pruebaNull", null } )]
+    [InlineData(new object?[] { "pruebaNull", null } )]
     public void Given_Object_CanBeRecovered(object keyName, object value)
     {
         var cache = new Cache<object>();

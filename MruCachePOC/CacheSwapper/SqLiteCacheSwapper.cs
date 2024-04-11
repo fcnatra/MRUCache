@@ -1,5 +1,6 @@
 using CacheSwapper.Serializers;
 using Microsoft.Data.Sqlite;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Text.Json;
 
@@ -32,12 +33,58 @@ public class SqLiteCacheSwapper<T> : ICacheSwapper<T> where T : class
 		if (keysToDump.Any(k => !entries.ContainsKey(k)))
 			throw new KeyNotFoundException("One or more keys are not in the entry list");
 
-		List<object> keysToReallyDump = GetNonExistingKeys(keysToDump);
+		List<object> keysToReallyDump = GetKeysNotAlreadyDumped(keysToDump);
 
-		AddKeysToDatabase(entries, keysToReallyDump);
+		Task.Run(() => AddKeysToDatabase(entries, keysToReallyDump)).Wait(200);
 		RemoveDumpedKeysFromEntryList(entries, keysToReallyDump);
 
 		return keysToReallyDump;
+	}
+
+	public bool Recover(Dictionary<object, T> entries, object key)
+	{
+		if (key is null)
+			return false;
+
+		bool entryWasRecovered = false;
+
+		Dictionary<object, SqliteParameter> keysParameterized = CreateParametersForSelect(new List<object> { key });
+		List<SqliteParameter> parameters = keysParameterized.Values.ToList();
+		string commandText = BuildSelectQueryToGetKeyValue(parameters);
+
+		SqliteParameter keyParameter = parameters.First();
+
+		using (var db = new SqliteConnection(this.SqliteConnectionString))
+		{
+			db.Open();
+
+			var command = new SqliteCommand(commandText.ToString(), db);
+			command.Parameters.Add(keyParameter);
+			
+			var entriesAlreadyHadTheKey = entries.ContainsKey(key);
+
+			if (!entriesAlreadyHadTheKey)
+				entryWasRecovered = ReadEntryFromDb(entries, key, command);
+
+			if (entriesAlreadyHadTheKey || entryWasRecovered)
+				DeleteEntryFromDb(command, keyParameter);
+		}
+
+		return entryWasRecovered;
+	}
+
+	private bool ReadEntryFromDb(Dictionary<object, T> entries, object key, SqliteCommand command)
+	{
+		bool wasRecovered = false;
+		var reader = command.ExecuteReader();
+		if (reader.Read())
+		{
+			wasRecovered = true;
+			AddRecoveredEntryToEntryList(entries, key, reader);
+			reader.Close();
+		}
+
+		return wasRecovered;
 	}
 
 	private static void RemoveDumpedKeysFromEntryList(Dictionary<object, T> entries, List<object> keysToReallyDump)
@@ -52,7 +99,7 @@ public class SqLiteCacheSwapper<T> : ICacheSwapper<T> where T : class
 			return;
 
 		List<SqliteParameter> parameters = CreateParametersForInsert(entries, keysDump);
-		string parameterNames = BuildParametersDefinitionForInsert(keysDump);
+		string parameterNames = BuildParametersNamesForInsert(keysDump);
 		string insertQuery = BuildInsertQuery(parameterNames);
 
 		using (var db = new SqliteConnection(this.SqliteConnectionString))
@@ -62,8 +109,6 @@ public class SqLiteCacheSwapper<T> : ICacheSwapper<T> where T : class
 			var command = new SqliteCommand(insertQuery, db);
 			command.Parameters.AddRange(parameters);
 			command.ExecuteNonQuery();
-
-			db.Close();
 		}
 	}
 
@@ -77,10 +122,13 @@ public class SqLiteCacheSwapper<T> : ICacheSwapper<T> where T : class
 	private List<SqliteParameter> CreateParametersForInsert(Dictionary<object, T> entries, List<object> keysToReallyDump)
 	{
 		List<SqliteParameter> parameters = new List<SqliteParameter>();
+		
 		for (int i = 0; i < keysToReallyDump.Count; i++)
 		{
 			object key = Serialize(keysToReallyDump[i]);
-			object value = Serialize(entries[keysToReallyDump[i]]);
+			var entry = entries.Where(e => e.Key == keysToReallyDump[i]).ToDictionary(kv => kv.Key, kv => kv.Value);
+			//T entry = entries[keysToReallyDump[i]];
+			object? value = Serialize(entry);
 
 			parameters.Add(new SqliteParameter($"@k_{i}", key));
 			parameters.Add(new SqliteParameter($"@v_{i}", value));
@@ -89,13 +137,13 @@ public class SqLiteCacheSwapper<T> : ICacheSwapper<T> where T : class
 		return parameters;
 	}
 
-	private string BuildParametersDefinitionForInsert(List<object> keysToReallyDump)
+	private string BuildParametersNamesForInsert(List<object> keysToReallyDump)
 	{
 		var i = 0;
 		return string.Join(", ", keysToReallyDump.Select(k => $"(@k_{i}, @v_{i++})"));
 	}
 
-	private List<object> GetNonExistingKeys(IEnumerable<object> keysToDump)
+	private List<object> GetKeysNotAlreadyDumped(IEnumerable<object> keysToDump)
 	{
 		var keys = keysToDump?.ToList() ?? [];
 		if (keys.Count == 0)
@@ -103,8 +151,7 @@ public class SqLiteCacheSwapper<T> : ICacheSwapper<T> where T : class
 
 		Dictionary<object, SqliteParameter> keysParameterized = CreateParametersForSelect(keys);
 		List<SqliteParameter> parameters = keysParameterized.Values.ToList();
-		string paramValuesForQuery = ExtractParameterValuesForQuerySelect(parameters);
-		string commandText = BuildSelectQuery(paramValuesForQuery);
+		string commandText = BuildSelectQueryToGetKeys(parameters);
 
 		var serializedKeys = parameters.Select(p => p.Value);
 		List<object> nonExistingKeys = new(keys);
@@ -124,18 +171,18 @@ public class SqLiteCacheSwapper<T> : ICacheSwapper<T> where T : class
 							.First(kp => kp.Value.Value?.Equals(reader[FIELDKEY]) ?? false);
 						nonExistingKeys.Remove(nonSerializedKey.Key);
 					}
-
-			db.Close();
 		}
 
 		return nonExistingKeys;
 	}
 
-	private static string BuildSelectQuery(string paramNamesForQuery)
+	private static string BuildSelectQueryToGetKeys(List<SqliteParameter> parameters)
 	{
+		string paramValues = ExtractParameterValuesForQuerySelect(parameters);
+
 		return new StringBuilder("SELECT ").Append(FIELDKEY)
 			.Append(" FROM ").Append(TABLENAME)
-			.Append(" WHERE ").Append(FIELDKEY).Append(" IN (").Append(paramNamesForQuery).Append(");")
+			.Append(" WHERE ").Append(FIELDKEY).Append(" IN (").Append(paramValues).Append(");")
 			.ToString();
 	}
 
@@ -160,7 +207,7 @@ public class SqLiteCacheSwapper<T> : ICacheSwapper<T> where T : class
 
 	private object Serialize(object value) => JsonSerializer.Serialize(value, this.serializationOptions);
 
-	private object? Deserialize(string jsonString) => JsonSerializer.Deserialize<object>(jsonString, this.serializationOptions);
+	private Dictionary<object, T>? Deserialize(string jsonString) => JsonSerializer.Deserialize<Dictionary<object, T>>(jsonString, this.deserializationOptions);
 
 	private void InitializeDatabase()
 	{
@@ -175,7 +222,6 @@ public class SqLiteCacheSwapper<T> : ICacheSwapper<T> where T : class
 			SqliteCommand command = new SqliteCommand(commandText.ToString(), db);
 			command.ExecuteReader();
 
-
 			commandText = new StringBuilder("CREATE TABLE ")
 				.Append(TABLENAME).Append(" (")
 				.Append(FIELDKEY).Append(" TEXT NOT NULL, ")
@@ -187,8 +233,40 @@ public class SqLiteCacheSwapper<T> : ICacheSwapper<T> where T : class
 		}
 	}
 
-	public bool Recover(Dictionary<object, T?> entries, object key)
-    {
-        throw new NotImplementedException();
-    }
+	private void AddRecoveredEntryToEntryList(Dictionary<object, T> entries, object key, SqliteDataReader reader)
+	{
+		string serializedValue = (string)reader[FIELDVALUE];
+		T? entryValue = null;
+		if (serializedValue != null)
+		{
+			Dictionary<object, T>? recoveredEntries = Deserialize(serializedValue);
+			entryValue = recoveredEntries?.First().Value ?? null;
+		}
+
+		if (entryValue != null)
+			entries.Add(key, entryValue);
+	}
+
+	private void DeleteEntryFromDb(SqliteCommand command, SqliteParameter keyParameter)
+	{
+		command.CommandText = BuildDeleteQueryForKey(keyParameter);
+		command.ExecuteNonQuery();
+	}
+
+	private string BuildDeleteQueryForKey(SqliteParameter parameter)
+	{
+		return new StringBuilder("DELETE FROM ").Append(TABLENAME)
+					.Append(" WHERE ").Append(FIELDKEY).Append(" = ").Append(parameter.Value).Append(';')
+					.ToString();
+	}
+
+	private string BuildSelectQueryToGetKeyValue(List<SqliteParameter> parameters)
+	{
+		string paramValues = ExtractParameterValuesForQuerySelect(parameters);
+
+		return new StringBuilder("SELECT [").Append(FIELDKEY).Append("], [").Append(FIELDVALUE)
+			.Append("] FROM ").Append(TABLENAME)
+			.Append(" WHERE ").Append(FIELDKEY).Append(" IN (").Append(paramValues).Append(");")
+			.ToString();
+	}
 }
