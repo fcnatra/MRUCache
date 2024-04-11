@@ -4,10 +4,10 @@ namespace MruCache.Tests
 {
 	public class SqliteCacheSwapperTests : CacheSwapperTests
 	{
-		public override ICacheSwapper<MruCacheEntry<object>> CreateInstance()
+		public override ICacheSwapper<MruCacheEntry<object?>> CreateInstance()
 		{
 			var tempPath = Path.GetTempPath();
-			return new SqLiteCacheSwapper<MruCacheEntry<object>>(tempPath, new FileManager());
+			return new SqLiteCacheSwapper<MruCacheEntry<object?>>(tempPath, new FileManager());
 
 		}
 	}

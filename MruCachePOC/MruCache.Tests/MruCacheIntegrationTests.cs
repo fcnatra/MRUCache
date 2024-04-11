@@ -2,14 +2,15 @@ using CacheSwapper;
 
 namespace MruCache.Tests;
 
-public class MruCacheIntegrationTests
+public abstract class MruCacheIntegrationTests
 {
+    public abstract Cache<T> CreateCache<T>();
+
     [Fact]
     public void Given_InexistingKey_NullValueIsReturned()
     {
         // ARRANGE
-        var cache = new Cache<string>();
-        cache.CacheSwapper = new MemoryCacheSwapper<MruCacheEntry<string?>>();
+        var cache = CreateCache<string>();
 
         // ACT
         var valueRecovered = cache["anyKey"];
@@ -21,8 +22,7 @@ public class MruCacheIntegrationTests
     [Fact]
     public void Given_InexistingKey_TryGetReturnsFalse()
     {
-		var cache = new Cache<object>();
-		cache.CacheSwapper = new MemoryCacheSwapper<MruCacheEntry<object?>>();
+		var cache = CreateCache<object>();
 
 		// ACT
 		var keyExists = cache.TryGetValue("anyKey", out object? _);
@@ -35,8 +35,7 @@ public class MruCacheIntegrationTests
     public void Given_NullValue_KeyIsCached()
     {
         var keyName = "test";
-		var cache = new Cache<object>();
-		cache.CacheSwapper = new MemoryCacheSwapper<MruCacheEntry<object?>>();
+		var cache = CreateCache<object>();
 
 		// ACT
 		cache.AddOrUpdate(keyName, null);
@@ -52,8 +51,7 @@ public class MruCacheIntegrationTests
 		var keyName = "test";
         var keyValue = new byte[] { 1, 2, 3 };
 
-		var cache = new Cache<object>();
-		cache.CacheSwapper = new MemoryCacheSwapper<MruCacheEntry<object?>>();
+		var cache = CreateCache<object>();
 
 		// ACT
 		cache.AddOrUpdate(keyName, keyValue);
@@ -73,8 +71,7 @@ public class MruCacheIntegrationTests
     [InlineData(new object?[] { "pruebaNull", null } )]
     public void Given_Object_CanBeRecovered(object keyName, object value)
     {
-		var cache = new Cache<object>();
-		cache.CacheSwapper = new MemoryCacheSwapper<MruCacheEntry<object?>>();
+		var cache = CreateCache<object>();
 
 		// ACT
 		cache[keyName] = value;
