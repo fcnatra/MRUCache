@@ -18,11 +18,11 @@ public abstract class CacheSwapperTests
 
 	public abstract ICacheSwapper<MruCacheEntry<object?>> CreateInstance();
 
-	[Trait("Category", "Load")]
+	[Trait("Category", "Load Tests")]
 	[Theory]
 	[InlineData([TWOMILLIONS])]
-	[InlineData([TENMILLIONS])]//, Skip = (" Doesn't pass on sqlite"))]
-	[InlineData([FIFTEENMILLIONS], Skip = (" Doesn't pass on memory"))]
+	[InlineData([TENMILLIONS])]
+	[InlineData([FIFTEENMILLIONS], Skip = ("Skipped - Doesn't pass on memory"))]
 	public void SeveralMillionEntries_CanBeCached(int numberOfEntries)
 	{
 		var entries = new Dictionary<object, MruCacheEntry<object?>>();
