@@ -1,4 +1,5 @@
 using CacheSwapper;
+using System.Reflection;
 
 namespace MruCache.Tests;
 
@@ -80,4 +81,34 @@ public abstract class MruCacheIntegrationTests
         var cachedValue = cache[keyName];
         Assert.Equal(value, cachedValue);
     }
+
+	[Fact]
+	public void GivenObjectInCacheThatNeedsSwapping_ObjectCanBeRecovered_MoreThanOnce()
+	{
+		var key1 = "test";
+		var value1 = new byte[] { 1, 2, 3 };
+
+		var key2 = "test1";
+		string value2 = "test1 value";
+
+		var cache = CreateCache<object?>();
+		cache.MaxActiveEntries = 1;
+
+		// ACT
+		cache.AddOrUpdate(key1, value1);
+		cache.AddOrUpdate(key2, value2);
+
+		// ASSERT
+		var value1Recovered = cache[key1];
+		var value1RecoveredSecondTime = cache[key1];
+
+		var value2Recovered = cache[key2];
+		var value2RecoveredSecondTime = cache[key2];
+
+		Assert.Equal(value1, value1Recovered);
+		Assert.Equal(value1, value1RecoveredSecondTime);
+
+		Assert.Equal(value2, value2Recovered);
+		Assert.Equal(value2, value2RecoveredSecondTime);
+	}
 }

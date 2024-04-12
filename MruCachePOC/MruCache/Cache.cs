@@ -33,13 +33,21 @@ public class Cache<T>
     {
         if (_entries.TryGetValue(key, out MruCacheEntry<T?>? entry))
         {
-            value = ((MruCacheEntry<T?>)entry).Value;
+            value = entry.Value;
             return true;
         }
         else
         {
-            value = default;
-            return false;
+            if (CacheSwapper?.Recover(_entries, key) ?? false)
+            {
+				MakeRoomIfFull();
+				return this.TryGetValue(key, out value);
+            }
+            else
+            {
+                value = default;
+                return false;
+            }
         }
     }
 

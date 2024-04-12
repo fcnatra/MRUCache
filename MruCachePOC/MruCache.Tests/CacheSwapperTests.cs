@@ -18,6 +18,7 @@ public abstract class CacheSwapperTests
 
 	public abstract ICacheSwapper<MruCacheEntry<object?>> CreateInstance();
 
+	[Trait("Category", "Load")]
 	[Theory]
 	[InlineData([TWOMILLIONS])]
 	[InlineData([TENMILLIONS])]//, Skip = (" Doesn't pass on sqlite"))]
