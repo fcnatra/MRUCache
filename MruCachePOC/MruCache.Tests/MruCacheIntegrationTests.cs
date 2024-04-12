@@ -105,7 +105,7 @@ public abstract class MruCacheIntegrationTests
 		var value2Recovered = cache[key2];
 		var value2RecoveredSecondTime = cache[key2];
 
-		Assert.Equal(value1, (value1Recovered as Array)?.Cast<byte>() ?? []);
+		Assert.Equal(value1, value1Recovered);// (value1Recovered as Array)?.Cast<byte>() ?? []);
 		Assert.Equal(value1, value1RecoveredSecondTime);
 
 		Assert.Equal(value2, value2Recovered);
