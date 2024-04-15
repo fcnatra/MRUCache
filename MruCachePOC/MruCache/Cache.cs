@@ -72,7 +72,7 @@ public class Cache<T>
         if (IsFull)
         {
             // get 1% of entries which were Least Recently Used
-            var keysToRemove = _entries.OrderBy(e => ((MruCacheEntry<T?>)e.Value).LastAccessTime).Select(e => e.Key).Take(OnePercent);
+            var keysToRemove = _entries.OrderBy(e => (e.Value).LastAccessTime).Select(e => e.Key).Take(OnePercent);
 
             if (this.CacheSwapper is not null)
                 CacheSwapper.Dump(_entries, keysToRemove);
