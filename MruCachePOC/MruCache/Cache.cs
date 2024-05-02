@@ -16,7 +16,14 @@ public class Cache<T>
         this._entries = new Dictionary<object, MruCacheEntry<T?>>();
     }
 
-    public T? this[object key]
+	internal static Cache<T> CacheWithArrayAsAKey()
+	{
+		var cache = new Cache<T>();
+		cache._entries = new Dictionary<object, MruCacheEntry<T>>((IEqualityComparer<object>)ArrayEqualityComparerWithObjectCasting<object>.Default);
+		return cache;
+	}
+
+	public T? this[object key]
     {
         get
         {
