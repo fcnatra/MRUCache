@@ -6,18 +6,25 @@ namespace CacheSwapper;
 
 public class MemoryCacheSwapper<T> : ICacheSwapper<T> where T : class
 {
-	private byte[] _compressedCache = [];
+	private byte[] _compressedCache = new byte[] { };
 
-	public IEnumerable<object> Dump(Dictionary<object, T> entries, IEnumerable<object> keysToDump)
+	public void Dispose()
+	{
+		System.Array.Clear(_compressedCache);
+	}
+
+	public IEnumerable<object> Dump(Dictionary<object, T> entries, List<object> keysToDump)
 	{
 		var cachedEntries = DecompressCache();
 
-		List<object> keysToAdd = keysToDump.Where(k => cachedEntries.TryAdd(k, entries[k])).ToList();
-
-		foreach (var key in keysToAdd) entries.Remove(key);
+		List<object> keysToAdd = keysToDump
+			.Where(k => cachedEntries.TryAdd(k, entries[k]))
+			.ToList();
 
 		if (keysToAdd.Any())
 			CompressCache(cachedEntries);
+
+		foreach (var key in keysToAdd) entries.Remove(key);
 
 		return keysToAdd;
 	}
@@ -41,7 +48,7 @@ public class MemoryCacheSwapper<T> : ICacheSwapper<T> where T : class
 	{
 		if (entries.Count == 0)
 		{
-			_compressedCache = [];
+			_compressedCache = new byte[] { };
 			return;
 		}
 
@@ -68,7 +75,7 @@ public class MemoryCacheSwapper<T> : ICacheSwapper<T> where T : class
 
 	private Dictionary<object, T> DecompressCache()
 	{
-		Dictionary<object, T> cachedEntries = [];
+		Dictionary<object, T> cachedEntries = new();
 
 		if (_compressedCache == null || _compressedCache.Length == 0)
 			return cachedEntries;
@@ -86,7 +93,7 @@ public class MemoryCacheSwapper<T> : ICacheSwapper<T> where T : class
 			{
 				string jsonString = reader.ReadToEnd();
 				var deserializedObject = JsonSerializer.Deserialize<Dictionary<object, T>>(jsonString, deserializationOptions);
-				cachedEntries = deserializedObject ?? [];
+				cachedEntries = deserializedObject ?? new();
 			}
 		}
 

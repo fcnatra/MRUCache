@@ -1,5 +1,4 @@
 using CacheSwapper;
-using Xunit.Sdk;
 
 namespace MruCache.Tests;
 
@@ -22,7 +21,7 @@ public abstract class CacheSwapperTests
 	[Theory]
 	[InlineData([TWOMILLIONS])]
 	[InlineData([TENMILLIONS])]
-	[InlineData([FIFTEENMILLIONS], Skip = ("Skipped - Doesn't pass on memory"))]
+	[InlineData([FIFTEENMILLIONS], Skip = ("Skipped - 15millions Doesn't pass on memory"))]
 	public void SeveralMillionEntries_CanBeCached(int numberOfEntries)
 	{
 		var entries = new Dictionary<object, MruCacheEntry<object?>>();
@@ -30,7 +29,7 @@ public abstract class CacheSwapperTests
 			entries.Add(i, new MruCacheEntry<object?>(i));
 
 		// ACT
-		var dumpedKeys = cacheSwapper.Dump(entries, entries.Keys);
+		var dumpedKeys = cacheSwapper.Dump(entries, entries.Keys.ToList());
 
 		// ASSERT
 		Assert.Equal(numberOfEntries, dumpedKeys.Count());
@@ -75,7 +74,7 @@ public abstract class CacheSwapperTests
 	}
 
 	[Fact]
-	public void Dumping_AlreadyDumpedEntry_DoesNotReturnItsKey()
+	public void DumpingSameKeyTwice_ReturnsItOnce()
 	{
 		var nameOfKey1 = "key1";
 		var value1 = "value1";
@@ -83,15 +82,21 @@ public abstract class CacheSwapperTests
 		var entries = new Dictionary<object, MruCacheEntry<object?>>();
 
 		entries.Add(nameOfKey1, new MruCacheEntry<object?>(value1));
-		cacheSwapper.Dump(entries, new List<object> { nameOfKey1 });
+		cacheSwapper.Dump(entries, [nameOfKey1]);
 
 		entries.Add(nameOfKey1, new MruCacheEntry<object?>(value1));
+		cacheSwapper.Dump(entries, [nameOfKey1]);
+
+		entries.Clear();
 
 		// ACT
-		var dumpedKeys = cacheSwapper.Dump(entries, new List<object> { nameOfKey1 });
+		var wasRecoveredOnce = cacheSwapper.Recover(entries, nameOfKey1);
+		var wasRecoveredTwice = cacheSwapper.Recover(entries, nameOfKey1);
 
 		// ASSERT
-		Assert.DoesNotContain(nameOfKey1, dumpedKeys);
+		Assert.True(wasRecoveredOnce);
+		Assert.Contains(nameOfKey1, entries.Keys);
+		Assert.False(wasRecoveredTwice);
 	}
 
 	[Fact]
@@ -157,7 +162,7 @@ public abstract class CacheSwapperTests
 		};
 
 		// ACT
-		cacheSwapper.Dump(entries, entries.Keys.Take(2));
+		cacheSwapper.Dump(entries, entries.Keys.Take(2).ToList());
 
 		// ASSERT
 		bool entryIsInTheList = entries.TryGetValue(nameOfKey3, out MruCacheEntry<object?>? entry);

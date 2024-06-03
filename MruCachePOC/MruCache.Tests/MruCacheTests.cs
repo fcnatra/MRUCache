@@ -6,7 +6,7 @@ namespace MruCache.Tests;
 public class MruCacheTests
 {
     [Fact]
-    public void GivenCacheSwapper_AddingNewElement_SearchIntoDumpedElements()
+    public void GivenCacheSwapper_AddingNewElement_DOESNOTSearchIntoDumpedElements()
     {
         var keyName = 1;
         var fakeCacheSwapper = A.Fake<ICacheSwapper<MruCacheEntry<string?>>>();
@@ -19,7 +19,7 @@ public class MruCacheTests
 
         // ASSERT
         A.CallTo(() => fakeCacheSwapper.Recover(A<Dictionary<object, MruCacheEntry<string?>>>._, A<int>.That.IsEqualTo<int>(keyName)))
-        .MustHaveHappened(1, Times.Exactly);
+        .MustNotHaveHappened();
     }
 
     [Fact]
@@ -42,9 +42,9 @@ public class MruCacheTests
         cache.AddOrUpdate(3, "any other value");
 
         // ASSERT
-        A.CallTo(() => fakeCacheSwapper.Dump(A<Dictionary<object, MruCacheEntry<string?>>>._, A<IEnumerable<object>>
-        .That.IsSameSequenceAs<IEnumerable<object>>(new List<object>{firstKey})))
-        .MustHaveHappened(1, Times.Exactly);
+        A.CallTo(() => fakeCacheSwapper.Dump(A<Dictionary<object, MruCacheEntry<string?>>>._, A<List<object>>
+            .That.IsSameSequenceAs<List<object>>(new List<object>{firstKey})))
+            .MustHaveHappened(1, Times.Exactly);
     }
 
     [Fact]

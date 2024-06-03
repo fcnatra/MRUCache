@@ -1,5 +1,6 @@
 using CacheSwapper.Serializers;
 using Microsoft.Data.Sqlite;
+using System.Diagnostics;
 using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Text.Json;
@@ -12,8 +13,16 @@ public class SqLiteCacheSwapper<T> : ICacheSwapper<T> where T : class
 	private const string TABLENAME = "CachedDictionary";
 	private const string FIELDKEY = "Key";
 	private const string FIELDVALUE = "Value";
+	private const string SELECTOGETKEYVALUESPARAMSPLACEHOLDER = "#SELECTOGETKEYVALUESPARAMsPLACEHOLDER#";
+	private const string INSERTQUERYPARAMSPLACEHOLDER = "#INSERTQUERYPARAMSPLACEHOLDER#";
+	private const int SQLITE_MAX_VARIABLE_NUMBER = 999; // https://sqlite.org/limits.html
+
+	private readonly static string selectQueryToGetKeyValueTemplate = $"SELECT [{FIELDKEY}], [{FIELDVALUE}] FROM {TABLENAME} WHERE {FIELDKEY} IN ({SELECTOGETKEYVALUESPARAMSPLACEHOLDER});";
+	private readonly static string insertQueryTemplate = $"INSERT OR IGNORE INTO {TABLENAME} VALUES {INSERTQUERYPARAMSPLACEHOLDER}";
+	private readonly static string selectQueryToGetNonExistingKeysTemplate = $"SELECT {FIELDKEY} FROM {TABLENAME} WHERE {FIELDKEY} IN ({SELECTOGETKEYVALUESPARAMSPLACEHOLDER});";
 
 	private readonly string dbFilePath;
+	private readonly string dbFileDirectory;
 	private readonly JsonSerializerOptions serializationOptions = CacheSerialization.GetOptionsWith(new ByteArrayJsonConverter());
 	private readonly JsonSerializerOptions deserializationOptions = CacheSerialization.GetOptionsWith(new CacheDeserializerJsonConverter<T>());
 
@@ -22,23 +31,44 @@ public class SqLiteCacheSwapper<T> : ICacheSwapper<T> where T : class
 	private string SqliteConnectionString => $"Data Source={dbFilePath}";
 
 	public SqLiteCacheSwapper(string databasePath, IFileManager fileManager)
-    {
+	{
 		DbFileManager = fileManager;
-		dbFilePath = DbFileManager.CombinePath(databasePath, DATABASENAME);
+		this.dbFilePath = DbFileManager.CombinePath(databasePath, DATABASENAME.Replace(".", $"{DateTime.Now.Ticks}."));
+		this.dbFileDirectory = databasePath;
+
 		InitializeDatabase();
 	}
 
-	public IEnumerable<object> Dump(Dictionary<object, T> entries, IEnumerable<object> keysToDump)
+	public IEnumerable<object> Dump(Dictionary<object, T> entries, List<object> keysToDump)
 	{
 		if (keysToDump.Any(k => !entries.ContainsKey(k)))
 			throw new KeyNotFoundException("One or more keys are not in the entry list");
 
-		List<object> keysToReallyDump = GetKeysNotAlreadyDumped(keysToDump);
+		List<object> keysToReallyDump = keysToDump.ToList(); //GetKeysNotAlreadyDumped(keysToDump);
+		var numberOfKeys = keysToReallyDump.Count();
 
-		Task.Run(() => AddKeysToDatabase(entries, keysToReallyDump)).Wait(200);
-		RemoveDumpedKeysFromEntryList(entries, keysToReallyDump);
+		if (numberOfKeys <= SQLITE_MAX_VARIABLE_NUMBER)
+			AddKeysToDatabase(entries, keysToReallyDump);
+		else
+			AddKeysToDatabaseInSmallBlocks(entries, keysToReallyDump, numberOfKeys);
 
-		return keysToReallyDump;
+		RemoveDumpedKeysFromEntryList(entries, keysToDump);
+
+		return keysToDump;
+	}
+
+	private void AddKeysToDatabaseInSmallBlocks(Dictionary<object, T> entries, List<object> keysToReallyDump, int numberOfKeys)
+	{
+		int numberOfBlocks = numberOfKeys / SQLITE_MAX_VARIABLE_NUMBER;
+		int indexStartOfBlock, numberOfKeysInThisBlock;
+		for (int i = 0; i <= numberOfBlocks; i++)
+		{
+			indexStartOfBlock = i * SQLITE_MAX_VARIABLE_NUMBER;
+			numberOfKeysInThisBlock = SQLITE_MAX_VARIABLE_NUMBER;
+			if (indexStartOfBlock + numberOfKeysInThisBlock >= numberOfKeys) numberOfKeysInThisBlock = numberOfKeys - indexStartOfBlock;
+
+			AddKeysToDatabase(entries, keysToReallyDump.GetRange(indexStartOfBlock, numberOfKeysInThisBlock));
+		}
 	}
 
 	public bool Recover(Dictionary<object, T> entries, object key)
@@ -60,7 +90,7 @@ public class SqLiteCacheSwapper<T> : ICacheSwapper<T> where T : class
 
 			var command = new SqliteCommand(commandText.ToString(), db);
 			command.Parameters.Add(keyParameter);
-			
+
 			var entriesAlreadyHadTheKey = entries.ContainsKey(key);
 
 			if (!entriesAlreadyHadTheKey)
@@ -68,6 +98,9 @@ public class SqLiteCacheSwapper<T> : ICacheSwapper<T> where T : class
 
 			if (entriesAlreadyHadTheKey || entryWasRecovered)
 				DeleteEntryFromDb(command, keyParameter);
+
+			db.Close();
+			SqliteConnection.ClearAllPools();
 		}
 
 		return entryWasRecovered;
@@ -99,7 +132,7 @@ public class SqLiteCacheSwapper<T> : ICacheSwapper<T> where T : class
 			return;
 
 		List<SqliteParameter> parameters = CreateParametersForInsert(entries, keysDump);
-		string parameterNames = BuildParametersNamesForInsert(keysDump);
+		List<string> parameterNames = BuildParametersNamesForInsert(keysDump);
 		string insertQuery = BuildInsertQuery(parameterNames);
 
 		using (var db = new SqliteConnection(this.SqliteConnectionString))
@@ -108,27 +141,38 @@ public class SqLiteCacheSwapper<T> : ICacheSwapper<T> where T : class
 
 			var command = new SqliteCommand(insertQuery, db);
 			command.Parameters.AddRange(parameters);
-			command.ExecuteNonQuery();
+			var numberOfKeysAdded = command.ExecuteNonQuery();
+			Trace.WriteLineIf(numberOfKeysAdded < keysDump.Count(), "---> CACHE SWAPPER INSERTED LESS KEYS THAN REQUESTED!!!!", "WARNING");
+
+			db.Close();
+			SqliteConnection.ClearAllPools();
 		}
 	}
 
-	private static string BuildInsertQuery(string parameterNames)
+	private static string BuildInsertQuery(IEnumerable<string> parameterNames)
 	{
-		return new StringBuilder("INSERT INTO ").Append(TABLENAME)
-			.Append(" VALUES ").Append(parameterNames).Append(';')
+		var queryParams = string.Join(", ", parameterNames);
+		return insertQueryTemplate
+			.Replace(INSERTQUERYPARAMSPLACEHOLDER, queryParams)
 			.ToString();
 	}
 
-	private List<SqliteParameter> CreateParametersForInsert(Dictionary<object, T> entries, List<object> keysToReallyDump)
+	private List<SqliteParameter> CreateParametersForInsert(Dictionary<object, T> entries, List<object> keysToDump)
 	{
 		List<SqliteParameter> parameters = new List<SqliteParameter>();
-		
-		for (int i = 0; i < keysToReallyDump.Count; i++)
+
+		var dictionaryWithEntryToSerialize = new Dictionary<object, T>();
+		for (int i = 0; i < keysToDump.Count; i++)
 		{
-			object key = Serialize(keysToReallyDump[i]);
-			var entry = entries.Where(e => e.Key == keysToReallyDump[i]).ToDictionary(kv => kv.Key, kv => kv.Value);
-			//T entry = entries[keysToReallyDump[i]];
-			object? value = Serialize(entry);
+			dictionaryWithEntryToSerialize.Clear();
+			object entryKey = keysToDump[i];
+			object key = Serialize(entryKey);
+
+			//var entry = entries.Where(e => e.Key == keysToDump[i]).ToDictionary(kv => kv.Key, kv => kv.Value);
+			T entryValue = entries[entryKey];
+
+			dictionaryWithEntryToSerialize.Add(entryKey, entryValue);
+			object? value = Serialize(dictionaryWithEntryToSerialize);
 
 			parameters.Add(new SqliteParameter($"@k_{i}", key));
 			parameters.Add(new SqliteParameter($"@v_{i}", value));
@@ -137,15 +181,15 @@ public class SqLiteCacheSwapper<T> : ICacheSwapper<T> where T : class
 		return parameters;
 	}
 
-	private string BuildParametersNamesForInsert(List<object> keysToReallyDump)
+	private List<string> BuildParametersNamesForInsert(List<object> keysToReallyDump)
 	{
 		var i = 0;
-		return string.Join(", ", keysToReallyDump.Select(k => $"(@k_{i}, @v_{i++})"));
+		return keysToReallyDump.Select(k => $"(@k_{i}, @v_{i++})").ToList();
 	}
 
 	private List<object> GetKeysNotAlreadyDumped(IEnumerable<object> keysToDump)
 	{
-		var keys = keysToDump?.ToList() ?? [];
+		var keys = keysToDump?.ToList() ?? new List<object>();
 		if (keys.Count == 0)
 			return keys;
 
@@ -165,12 +209,15 @@ public class SqLiteCacheSwapper<T> : ICacheSwapper<T> where T : class
 
 			using (SqliteDataReader reader = command.ExecuteReader())
 				while (reader.Read())
-					if (serializedKeys.Any(sk => sk?.Equals(reader[FIELDKEY]) ?? false))
+					if (serializedKeys.Any(sk => sk?.Equals(reader[FIELDKEY]) ?? false)) //serializedKeys.Contains(reader[FIELDKEY]))
 					{
 						var nonSerializedKey = keysParameterized
 							.First(kp => kp.Value.Value?.Equals(reader[FIELDKEY]) ?? false);
 						nonExistingKeys.Remove(nonSerializedKey.Key);
 					}
+
+			db.Close();
+			SqliteConnection.ClearAllPools();
 		}
 
 		return nonExistingKeys;
@@ -180,10 +227,13 @@ public class SqLiteCacheSwapper<T> : ICacheSwapper<T> where T : class
 	{
 		string paramValues = ExtractParameterValuesForQuerySelect(parameters);
 
-		return new StringBuilder("SELECT ").Append(FIELDKEY)
-			.Append(" FROM ").Append(TABLENAME)
-			.Append(" WHERE ").Append(FIELDKEY).Append(" IN (").Append(paramValues).Append(");")
+		return selectQueryToGetNonExistingKeysTemplate
+			.Replace(SELECTOGETKEYVALUESPARAMSPLACEHOLDER, paramValues)
 			.ToString();
+		//new StringBuilder("SELECT ").Append(FIELDKEY)
+		//.Append(" FROM ").Append(TABLENAME)
+		//.Append(" WHERE ").Append(FIELDKEY).Append(" IN (").Append(paramValues).Append(");")
+		//.ToString();
 	}
 
 	private static string ExtractParameterValuesForQuerySelect(List<SqliteParameter> parameters)
@@ -194,7 +244,7 @@ public class SqLiteCacheSwapper<T> : ICacheSwapper<T> where T : class
 
 	private Dictionary<object, SqliteParameter> CreateParametersForSelect(List<object> keys)
 	{
-		Dictionary<object, SqliteParameter> keysParameterized = [];
+		Dictionary<object, SqliteParameter> keysParameterized = new();
 		var totalKeys = keys.Count;
 
 		for (int i = 0; i < totalKeys; i++)
@@ -211,6 +261,19 @@ public class SqLiteCacheSwapper<T> : ICacheSwapper<T> where T : class
 
 	private void InitializeDatabase()
 	{
+		DeleteExistingDatabaseFile();
+		DbFileManager.CreateFolder(this.dbFileDirectory);
+		CreateDatabase();
+	}
+
+	private void DeleteExistingDatabaseFile()
+	{
+		if (DbFileManager.FileExists(this.dbFilePath))
+			DbFileManager.DeleteFile(dbFilePath);
+	}
+
+	private void CreateDatabase()
+	{
 		SQLitePCL.Batteries.Init();
 		using (var db = new SqliteConnection(this.SqliteConnectionString))
 		{
@@ -220,16 +283,19 @@ public class SqLiteCacheSwapper<T> : ICacheSwapper<T> where T : class
 				.Append(TABLENAME).Append(';');
 
 			SqliteCommand command = new SqliteCommand(commandText.ToString(), db);
-			command.ExecuteReader();
+			command.ExecuteNonQuery();
 
 			commandText = new StringBuilder("CREATE TABLE ")
 				.Append(TABLENAME).Append(" (")
-				.Append(FIELDKEY).Append(" TEXT NOT NULL, ")
+				.Append(FIELDKEY).Append(" TEXT NOT NULL, ")// PRIMARY KEY, ")
 				.Append(FIELDVALUE).Append(" TEXT NULL)");
 
 			command = new SqliteCommand(commandText.ToString(), db);
 
-			command.ExecuteReader();
+			command.ExecuteNonQuery();
+
+			db.Close();
+			SqliteConnection.ClearAllPools();
 		}
 	}
 
@@ -260,13 +326,17 @@ public class SqLiteCacheSwapper<T> : ICacheSwapper<T> where T : class
 					.ToString();
 	}
 
-	private string BuildSelectQueryToGetKeyValue(List<SqliteParameter> parameters)
+	private static string BuildSelectQueryToGetKeyValue(List<SqliteParameter> parameters)
 	{
 		string paramValues = ExtractParameterValuesForQuerySelect(parameters);
 
-		return new StringBuilder("SELECT [").Append(FIELDKEY).Append("], [").Append(FIELDVALUE)
-			.Append("] FROM ").Append(TABLENAME)
-			.Append(" WHERE ").Append(FIELDKEY).Append(" IN (").Append(paramValues).Append(");")
+		return selectQueryToGetKeyValueTemplate
+			.Replace(SELECTOGETKEYVALUESPARAMSPLACEHOLDER, paramValues)
 			.ToString();
+	}
+
+	public void Dispose()
+	{
+		DeleteExistingDatabaseFile();
 	}
 }

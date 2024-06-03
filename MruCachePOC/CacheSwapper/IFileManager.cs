@@ -2,9 +2,10 @@
 {
 	public interface IFileManager
 	{
-		string CombinePath(string databasePath, string dATABASENAME);
-		void CreateFileOrOverride(string dbFilePath);
-		void Delete(string dbFilePath);
-		bool FileExists(string dbFilePath);
+		string CombinePath(string path1, string path2);
+		void CreateFileOrOverride(string filePath);
+		void CreateFolder(string path);
+		void DeleteFile(string filePath);
+		bool FileExists(string filePath);
 	}
 }

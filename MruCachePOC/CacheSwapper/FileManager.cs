@@ -1,19 +1,23 @@
-﻿namespace CacheSwapper
+﻿namespace CacheSwapper;
+
+public class FileManager : IFileManager
 {
-	public class FileManager : IFileManager
+	public string CombinePath(string path1, string path2) => Path.Combine(path1, path2);
+
+	public void CreateFileOrOverride(string filePath)
 	{
-		public string CombinePath(string path1, string path2) => Path.Combine(path1, path2);
-
-		public void CreateFileOrOverride(string dbFilePath)
-		{
-			File.Create(dbFilePath);
-		}
-
-		public void Delete(string dbFilePath)
-		{
-			File.Delete(dbFilePath);
-		}
-
-		public bool FileExists(string dbFilePath) => File.Exists(dbFilePath);
+		File.Create(filePath);
 	}
+
+	public void CreateFolder(string path)
+	{
+		Directory.CreateDirectory(path);
+	}
+
+	public void DeleteFile(string filePath)
+	{
+		File.Delete(filePath);
+	}
+
+	public bool FileExists(string filePath) => File.Exists(filePath);
 }

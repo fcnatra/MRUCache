@@ -1,6 +1,3 @@
-using CacheSwapper;
-using System.Reflection;
-
 namespace MruCache.Tests;
 
 public abstract class MruCacheIntegrationTests

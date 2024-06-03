@@ -2,32 +2,32 @@ namespace MruCache;
 
 public class MruCacheEntry<T>
 {
-    private T? _value;
+	private T? _value;
 
-    public MruCacheEntry(T? value)
-    {
-        Value = value;
-    }
+	public MruCacheEntry(T? value)
+	{
+		Value = value;
+	}
 
-    public T? Value 
-    {
-        get 
-        {
-            Touch();
-            return _value;
-        }
+	public T? Value
+	{
+		get
+		{
+			Touch();
+			return _value;
+		}
 
-        set
-        {
-            Touch();
-            _value = value;
-        }
-    }
+		set
+		{
+			Touch();
+			_value = value;
+		}
+	}
 
-    public DateTime LastAccessTime { get; set; }
+	public DateTime LastAccessTime { get; set; }
 
-    private void Touch()
-    {
-        LastAccessTime = DateTime.Now;
-    }
+	private void Touch()
+	{
+		LastAccessTime = DateTime.Now;
+	}
 }

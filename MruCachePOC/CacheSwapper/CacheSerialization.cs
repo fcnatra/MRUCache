@@ -38,26 +38,26 @@ internal static class ArraySerializer
 
 internal class ByteArrayJsonConverter : JsonConverter<byte[]>
 {
-    /// <summary>
-    /// ORIGINAL CODE FROM: https://github.com/dotnet/runtime/issues/31408#issuecomment-550347895
-    /// </summary>
-    public override byte[]? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-    {
-        byte[]? result = null;
-        var type = reader.TokenType;
+	/// <summary>
+	/// ORIGINAL CODE FROM: https://github.com/dotnet/runtime/issues/31408#issuecomment-550347895
+	/// </summary>
+	public override byte[]? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+	{
+		byte[]? result = null;
+		var type = reader.TokenType;
 
-        switch (type)
-        {
+		switch (type)
+		{
 			case JsonTokenType.StartArray:
 				result = ArraySerializer.ReadByteArray(ref reader);
 				break;
 
 			default:
 				break;
-        }
+		}
 
-        return result;
-    }
+		return result;
+	}
 
 	public override void Write(Utf8JsonWriter writer, byte[] value, JsonSerializerOptions options)
 	{
@@ -65,7 +65,7 @@ internal class ByteArrayJsonConverter : JsonConverter<byte[]>
 	}
 }
 
-internal class CacheDeserializerJsonConverter<T> : JsonConverter<Dictionary<object, T>> where T: class
+internal class CacheDeserializerJsonConverter<T> : JsonConverter<Dictionary<object, T>> where T : class
 {
 	/// <exception cref="JsonException"/>
 	public override Dictionary<object, T> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -172,7 +172,7 @@ internal class CacheDeserializerJsonConverter<T> : JsonConverter<Dictionary<obje
 				else if (element.TryGetDateTimeOffset(out DateTimeOffset dateTimeOffset)) return dateTimeOffset;
 				break;
 		}
-		
+
 		return element.GetString();
 	}
 
@@ -183,13 +183,13 @@ internal class CacheDeserializerJsonConverter<T> : JsonConverter<Dictionary<obje
 	}
 
 	private static void AddValueToTheDictionary(Dictionary<object, T> dictionary, string propertyName, object? propertyValue)
-    {
-		#pragma warning disable 8604 //Possible null reference for parameter "value" in "void Dictionary<object, T>.Add(object key, T value)
-        dictionary.Add(propertyName, (T?)propertyValue);
-		#pragma warning restore 8604
-    }
+	{
+#pragma warning disable 8604 //Possible null reference for parameter "value" in "void Dictionary<object, T>.Add(object key, T value)
+		dictionary.Add(propertyName, (T?)propertyValue);
+#pragma warning restore 8604
+	}
 
-    public override void Write(Utf8JsonWriter writer, Dictionary<object, T> value, JsonSerializerOptions options)
+	public override void Write(Utf8JsonWriter writer, Dictionary<object, T> value, JsonSerializerOptions options)
 	{
 		throw new NotImplementedException();
 	}
@@ -263,12 +263,6 @@ internal class ObjectDeserializerJsonConverter : JsonConverter<object>
 		else if (type.IsArray)
 		{
 			ArraySerializer.WriteByteArray(writer, (byte[])value);
-			//writer.WriteStartArray();
-
-			//foreach (var item in (Array)value)
-			//	Write(writer, item, options);
-
-			//writer.WriteEndArray();
 		}
 		else
 		{
