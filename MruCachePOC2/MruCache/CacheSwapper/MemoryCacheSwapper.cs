@@ -1,8 +1,12 @@
-﻿using CacheSwapper.Serializers;
+﻿using System.Collections.Generic;
+using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Text.Json;
+using MruCache.Comparers;
+using MruCache.CacheSwapper.JsonConverters;
 
-namespace CacheSwapper;
+namespace MruCache.CacheSwapper;
 
 public class MemoryCacheSwapper<T> : ICacheSwapper<T> where T : class
 {
@@ -27,6 +31,7 @@ public class MemoryCacheSwapper<T> : ICacheSwapper<T> where T : class
 		return keysToAdd;
 	}
 
+	#nullable enable
 	public bool Recover(Dictionary<object, T> entries, object key)
 	{
 		var cachedEntries = DecompressCache();

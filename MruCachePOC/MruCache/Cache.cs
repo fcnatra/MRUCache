@@ -20,7 +20,7 @@ public class Cache<T> : IDisposable
 	internal static Cache<T> CacheWithArrayAsAKey()
 	{
 		var cache = new Cache<T>();
-		cache._entries = new Dictionary<object, MruCacheEntry<T>>((IEqualityComparer<object>)ArrayEqualityComparerWithObjectCasting<object>.Default);
+		cache._entries = new Dictionary<object, MruCacheEntry<T?>>((IEqualityComparer<object>)ArrayEqualityComparerWithObjectCasting<object>.Default);
 		return cache;
 	}
 

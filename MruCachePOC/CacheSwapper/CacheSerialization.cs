@@ -65,12 +65,12 @@ internal class ByteArrayJsonConverter : JsonConverter<byte[]>
 	}
 }
 
-internal class CacheDeserializerJsonConverter<T> : JsonConverter<Dictionary<object, T>> where T : class
+internal class DictionaryJsonConverter<T> : JsonConverter<Dictionary<object, T>> where T : class
 {
-	/// <exception cref="JsonException"/>
 	public override Dictionary<object, T> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
 	{
-		ValidateThisIsStartObject(reader);
+		if (reader.TokenType != JsonTokenType.StartObject)
+			throw new JsonException($"Unexpected token type: {reader.TokenType}");
 
 		var dictionary = new Dictionary<object, T>();
 
@@ -118,15 +118,12 @@ internal class CacheDeserializerJsonConverter<T> : JsonConverter<Dictionary<obje
 					break;
 
 				case JsonTokenType.StartObject:
-					propertyValue = JsonSerializer.Deserialize(ref reader, typeof(T), options);
+					propertyValue = JsonSerializer.Deserialize(ref reader, typeof(T));
 					foreach (var property in typeof(T).GetProperties())
 					{
 						var objectValue = property.GetValue(propertyValue);
 						if (objectValue is JsonElement)
-						{
-							var deserializedValue = GetTypedValueFromJsonElement((JsonElement)objectValue);//((JsonElement)objectValue).GetString();
-							property.SetValue(propertyValue, deserializedValue);
-						}
+							property.SetValue(propertyValue, ((JsonElement)objectValue).GetString());
 					}
 					break;
 
@@ -140,48 +137,6 @@ internal class CacheDeserializerJsonConverter<T> : JsonConverter<Dictionary<obje
 		return dictionary;
 	}
 
-	private object? GetTypedValueFromJsonElement(JsonElement element)
-	{
-		switch (element.ValueKind)
-		{
-			case JsonValueKind.String:
-				return element.GetString();
-
-			case JsonValueKind.Number:
-				if (element.TryGetByte(out byte byteValue)) return byteValue;
-				else if (element.TryGetInt16(out short shortValue)) return shortValue;
-				else if (element.TryGetInt32(out int intValue)) return intValue;
-				else if (element.TryGetInt64(out long longValue)) return longValue;
-				else if (element.TryGetDecimal(out decimal decimalValue)) return decimalValue;
-				else if (element.TryGetDouble(out double doubleValue)) return doubleValue;
-				break;
-
-			case JsonValueKind.Array:
-				var array = new List<object?>();
-				foreach (JsonElement arrayElement in element.EnumerateArray())
-				{
-					var arrayElementValue = GetTypedValueFromJsonElement(arrayElement);
-					array.Add(arrayElementValue);
-				}
-				return array.ToArray();
-
-			default:
-				if (element.TryGetDateTime(out DateTime dateTime)) return dateTime;
-				else if (element.TryGetGuid(out Guid guidValue)) return guidValue;
-				else if (element.TryGetBytesFromBase64(out byte[]? bytes)) return bytes;
-				else if (element.TryGetDateTimeOffset(out DateTimeOffset dateTimeOffset)) return dateTimeOffset;
-				break;
-		}
-
-		return element.GetString();
-	}
-
-	private static void ValidateThisIsStartObject(Utf8JsonReader reader)
-	{
-		if (reader.TokenType != JsonTokenType.StartObject)
-			throw new JsonException($"Unexpected token type: {reader.TokenType}");
-	}
-
 	private static void AddValueToTheDictionary(Dictionary<object, T> dictionary, string propertyName, object? propertyValue)
 	{
 #pragma warning disable 8604 //Possible null reference for parameter "value" in "void Dictionary<object, T>.Add(object key, T value)
@@ -191,13 +146,24 @@ internal class CacheDeserializerJsonConverter<T> : JsonConverter<Dictionary<obje
 
 	public override void Write(Utf8JsonWriter writer, Dictionary<object, T> value, JsonSerializerOptions options)
 	{
-		throw new NotImplementedException();
+		writer.WriteStartObject();
+
+		foreach (var kvp in value)
+		{
+			//writer.WritePropertyName(kvp.Key.ToString());
+			//JsonSerializer.Serialize(writer, kvp.Value, options);
+
+			ObjectSerializer.Write(writer, kvp.Key, options);
+			ObjectSerializer.Write(writer, kvp.Value, options);
+		}
+
+		writer.WriteEndObject();
 	}
 }
 
-internal class ObjectDeserializerJsonConverter : JsonConverter<object>
+internal static class ObjectSerializer
 {
-	public override object? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+	public static object? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
 	{
 		var type = reader.TokenType;
 
@@ -226,7 +192,7 @@ internal class ObjectDeserializerJsonConverter : JsonConverter<object>
 		return document.RootElement.Clone();
 	}
 
-	public override void Write(Utf8JsonWriter writer, object value, JsonSerializerOptions options)
+	public static void Write(Utf8JsonWriter writer, object value, JsonSerializerOptions options)
 	{
 		if (value == null)
 		{
@@ -268,5 +234,18 @@ internal class ObjectDeserializerJsonConverter : JsonConverter<object>
 		{
 			JsonSerializer.Serialize(writer, value, value.GetType(), options);
 		}
+	}
+}
+
+internal class ObjectJsonConverter : JsonConverter<object>
+{
+	public override object? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+	{
+		return ObjectSerializer.Read(ref reader, typeToConvert, options);
+	}
+
+	public override void Write(Utf8JsonWriter writer, object value, JsonSerializerOptions options)
+	{
+		ObjectSerializer.Write(writer, value, options);
 	}
 }
