@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -18,14 +16,7 @@ internal class DictionaryJsonConverter<T> : JsonConverter<Dictionary<object, T>>
 
 		while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
         {
-            if (reader.TokenType != JsonTokenType.PropertyName)
-                throw new JsonException($"Unexpected token type: {reader.TokenType}");
-
-            string propertyName = reader.GetString() ?? throw new JsonException("Property name can't be NULL");
-
-            reader.Read();
-            object? propertyValue = ProcessValue(ref reader, options);
-
+            (string propertyName, object? propertyValue) = ReadProperty(ref reader, options);
             AddValueToTheDictionary(dictionary, propertyName, propertyValue);
         }
 
@@ -36,43 +27,61 @@ internal class DictionaryJsonConverter<T> : JsonConverter<Dictionary<object, T>>
     {
         switch (reader.TokenType)
         {
-            case JsonTokenType.String: return reader.GetString();
+            case JsonTokenType.String:
+                var content = reader.GetString();
+                if (DateTime.TryParse(content, out DateTime dateTime))
+					return dateTime;
+                return content;
 
             case JsonTokenType.Number:
                 if (reader.TryGetByte(out byte b)) return b;
-                
+
                 if (reader.TryGetInt32(out int valInt)) return valInt;
-                
+
                 if (reader.TryGetInt64(out long valLong)) return valLong;
-                
+
                 if (reader.TryGetDouble(out double valDouble)) return valDouble;
-                
+
                 throw new JsonException($"Unexpected token type: {reader.TokenType}");
 
             case JsonTokenType.True:
             case JsonTokenType.False:
                 return reader.GetBoolean();
 
-            case JsonTokenType.StartArray: return ReadArray(ref reader, options);
+            case JsonTokenType.StartArray: return ArraySerializer.ReadByteArray(ref reader);// ReadArray(ref reader, options);
 
-            case JsonTokenType.StartObject: return ReadObject(ref reader);
+            case JsonTokenType.StartObject: return ReadObject(ref reader, options);
 
             default:
                 throw new JsonException($"Unexpected token type: {reader.TokenType}");
         }
     }
 
-    private static object? ReadObject(ref Utf8JsonReader reader)
+    private object? ReadObject(ref Utf8JsonReader reader, JsonSerializerOptions options)
     {
-        object? propertyValue = JsonSerializer.Deserialize(ref reader, typeof(T));
-        foreach (var property in typeof(T).GetProperties())
+		var resultObject = typeof(T).GetConstructor(new Type[] { })?.Invoke(new object[] { });
+		var objectProperties = typeof(T).GetProperties();
+
+        while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
         {
-            object? objectValue = property.GetValue(propertyValue);
-            if (objectValue is JsonElement)
-                property.SetValue(propertyValue, ((JsonElement)objectValue).GetString());
+            (string propertyName, object? propertyValue) = ReadProperty(ref reader, options);
+            objectProperties.First(p => p.Name == propertyName).SetValue(resultObject, propertyValue);
         }
 
-        return propertyValue;
+        return resultObject;
+    }
+
+	private (string propertyName, object? propertyValue) ReadProperty(ref Utf8JsonReader reader, JsonSerializerOptions options)
+	{
+        if (reader.TokenType != JsonTokenType.PropertyName)
+            throw new JsonException($"Unexpected token type: {reader.TokenType}");
+
+        string propertyName = reader.GetString() ?? throw new JsonException("Property name can't be NULL");
+
+        reader.Read();
+        object? propertyValue = ProcessValue(ref reader, options);
+
+        return (propertyName, propertyValue);
     }
 
     private object ReadArray(ref Utf8JsonReader reader, JsonSerializerOptions options)
@@ -150,8 +159,8 @@ internal class DictionaryJsonConverter<T> : JsonConverter<Dictionary<object, T>>
 			writer.WriteBooleanValue((bool)value);
 			return;
 		}
-		
-		if (value is Array)
+
+        if (value is Array)
 		{
 			ArraySerializer.WriteByteArray(writer, (byte[])value);
 			return;

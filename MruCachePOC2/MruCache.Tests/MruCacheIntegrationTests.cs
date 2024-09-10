@@ -88,7 +88,7 @@ public abstract class MruCacheIntegrationTests
 		var key2 = "test1";
 		string value2 = "test1 value";
 
-		var cache = CreateCache<object?>();
+        Cache<object?> cache = CreateCache<object?>();
 		cache.MaxActiveEntries = 1;
 
 		// ACT

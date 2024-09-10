@@ -13,6 +13,10 @@ public class MruCacheEntry<T>
         Value = value;
     }
 
+    public MruCacheEntry()
+    {
+    }
+
     public T? Value 
     {
         get 
